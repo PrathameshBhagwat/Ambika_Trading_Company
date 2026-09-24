@@ -49,6 +49,7 @@ class Transaction(Base):
         Enum(TransactionStatus), default=TransactionStatus.DRAFT, nullable=False, index=True
     )
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    print_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

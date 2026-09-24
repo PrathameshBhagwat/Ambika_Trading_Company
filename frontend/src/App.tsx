@@ -15,6 +15,7 @@ import TransactionForm from './pages/transactions/TransactionForm';
 import TransactionDetail from './pages/transactions/TransactionDetail';
 import DailySummaryReport from './pages/reports/DailySummary';
 import FarmerOutstandingReport from './pages/reports/FarmerOutstanding';
+import PaymentSummary from './pages/reports/PaymentSummary';
 import BackupRestore from './pages/settings/BackupRestore';
 import './App.css';
 
@@ -93,6 +94,13 @@ function App() {
               <span className="icon">💰</span>
               Outstanding
             </NavLink>
+            <NavLink
+              to="/reports/payments"
+              className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
+            >
+              <span className="icon">💳</span>
+              Payment Summary
+            </NavLink>
           </div>
 
           <div className="sidebar-section">
@@ -122,9 +130,11 @@ function App() {
             <Route path="/vegetables" element={<VegetableList />} />
             <Route path="/transactions" element={<TransactionList />} />
             <Route path="/transactions/new" element={<TransactionForm />} />
+            <Route path="/transactions/edit/:id" element={<TransactionForm />} />
             <Route path="/transactions/:id" element={<TransactionDetail />} />
             <Route path="/reports/daily" element={<DailySummaryReport />} />
             <Route path="/reports/outstanding" element={<FarmerOutstandingReport />} />
+            <Route path="/reports/payments" element={<PaymentSummary />} />
             <Route path="/settings/backup" element={<BackupRestore />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

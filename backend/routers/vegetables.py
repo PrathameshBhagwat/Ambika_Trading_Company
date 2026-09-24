@@ -51,11 +51,23 @@ def get_vegetable(vegetable_id: int, db: Session = Depends(get_db)):
     return VegetableResponse.model_validate(vegetable)
 
 
+from services.audit_service import log_audit
+
+
 @router.post("/", response_model=VegetableResponse, status_code=201)
 def create_vegetable(data: VegetableCreate, db: Session = Depends(get_db)):
     """Add a new vegetable to the master list."""
     vegetable = Vegetable(**data.model_dump())
     db.add(vegetable)
+    db.flush()
+
+    new_values = {
+        "name_local": vegetable.name_local,
+        "name_english": vegetable.name_english,
+        "is_active": vegetable.is_active,
+    }
+    log_audit(db, entity_type="Vegetable", entity_id=vegetable.id, action="CREATE", new_values=new_values)
+
     db.commit()
     db.refresh(vegetable)
     logger.info(f"Created vegetable: {vegetable.name_local} (ID: {vegetable.id})")
@@ -69,9 +81,22 @@ def update_vegetable(vegetable_id: int, data: VegetableUpdate, db: Session = Dep
     if not vegetable:
         raise HTTPException(status_code=404, detail="Vegetable not found")
 
+    old_values = {
+        "name_local": vegetable.name_local,
+        "name_english": vegetable.name_english,
+        "is_active": vegetable.is_active,
+    }
+
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(vegetable, field, value)
+
+    new_values = {
+        "name_local": vegetable.name_local,
+        "name_english": vegetable.name_english,
+        "is_active": vegetable.is_active,
+    }
+    log_audit(db, entity_type="Vegetable", entity_id=vegetable.id, action="UPDATE", old_values=old_values, new_values=new_values)
 
     db.commit()
     db.refresh(vegetable)
@@ -86,7 +111,18 @@ def deactivate_vegetable(vegetable_id: int, db: Session = Depends(get_db)):
     if not vegetable:
         raise HTTPException(status_code=404, detail="Vegetable not found")
 
+    old_status = vegetable.is_active
     vegetable.is_active = False
+
+    log_audit(
+        db,
+        entity_type="Vegetable",
+        entity_id=vegetable.id,
+        action="DELETE",
+        old_values={"is_active": old_status},
+        new_values={"is_active": False},
+    )
+
     db.commit()
     logger.info(f"Deactivated vegetable: {vegetable.name_local} (ID: {vegetable.id})")
     return {"detail": f"Vegetable '{vegetable.name_local}' has been deactivated"}

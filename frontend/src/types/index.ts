@@ -35,6 +35,20 @@ export interface FarmerUpdate {
   is_active?: boolean;
 }
 
+export interface DuplicateFarmerMatch {
+  id: number;
+  name: string;
+  mobile?: string | null;
+  village?: string | null;
+  match_reason: string;
+}
+
+export interface DuplicateCheckResponse {
+  is_duplicate: boolean;
+  matches: DuplicateFarmerMatch[];
+  message?: string | null;
+}
+
 // ─── Vegetable ───
 export interface Vegetable {
   id: number;
@@ -112,12 +126,21 @@ export interface TransactionCreate {
   deductions: DeductionCreate;
 }
 
+export interface TransactionUpdate {
+  farmer_id?: number;
+  transaction_date?: string;
+  items?: TransactionItemCreate[];
+  deductions?: DeductionCreate;
+}
+
 export interface TransactionResponse {
   id: number;
   bill_number: string;
   transaction_date: string;
   farmer_id: number;
   farmer_name: string | null;
+  farmer_mobile?: string | null;
+  farmer_village?: string | null;
   gross_amount: number;
   total_deductions: number;
   net_payable: number;
@@ -125,6 +148,7 @@ export interface TransactionResponse {
   balance_due: number;
   status: TransactionStatus;
   cancel_reason: string | null;
+  print_count?: number;
   items: TransactionItemResponse[];
   deduction: DeductionResponse | null;
   created_at: string;
@@ -137,12 +161,15 @@ export interface TransactionListItem {
   transaction_date: string;
   farmer_id: number;
   farmer_name: string | null;
+  farmer_mobile?: string | null;
+  farmer_village?: string | null;
   gross_amount: number;
   total_deductions: number;
   net_payable: number;
   total_paid: number;
   balance_due: number;
   status: TransactionStatus;
+  print_count?: number;
   created_at: string;
 }
 
@@ -167,6 +194,8 @@ export interface PaymentResponse {
   reference_number: string | null;
   notes: string | null;
   created_at: string;
+  transaction_status?: string | null;
+  transaction_bill_number?: string | null;
 }
 
 // ─── Reports ───
@@ -199,6 +228,19 @@ export interface FarmerOutstandingItem {
   total_net_payable: number;
   total_paid: number;
   total_outstanding: number;
+}
+
+export interface PaymentSummaryItem {
+  payment_mode: string;
+  count: number;
+  total_amount: number;
+}
+
+export interface PaymentSummaryReport {
+  report_date_from: string;
+  report_date_to: string;
+  mode_breakdown: PaymentSummaryItem[];
+  grand_total: number;
 }
 
 // ─── Common ───

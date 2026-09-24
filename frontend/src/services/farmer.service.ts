@@ -3,7 +3,7 @@
  */
 
 import api from './api';
-import type { Farmer, FarmerCreate, FarmerUpdate, ListResponse } from '../types';
+import type { Farmer, FarmerCreate, FarmerUpdate, ListResponse, DuplicateCheckResponse } from '../types';
 
 export const farmerService = {
   list: async (params?: {
@@ -33,5 +33,17 @@ export const farmerService = {
 
   deactivate: async (id: number): Promise<void> => {
     await api.delete(`/api/farmers/${id}`);
+  },
+
+  checkDuplicate: async (
+    name: string,
+    mobile?: string | null,
+    excludeId?: number
+  ): Promise<DuplicateCheckResponse> => {
+    const params: Record<string, any> = { name };
+    if (mobile) params.mobile = mobile;
+    if (excludeId) params.exclude_id = excludeId;
+    const { data } = await api.get('/api/farmers/check-duplicate', { params });
+    return data;
   },
 };

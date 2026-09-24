@@ -34,6 +34,7 @@ class AuditLogListResponse(BaseModel):
 @router.get("/", response_model=AuditLogListResponse)
 def list_audit_logs(
     entity_type: str | None = Query(None, description="Filter by entity type"),
+    entity_id: int | None = Query(None, description="Filter by entity ID"),
     action: str | None = Query(None, description="Filter by action (CREATE, UPDATE, DELETE)"),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
@@ -49,6 +50,8 @@ def list_audit_logs(
 
     if entity_type:
         query = query.filter(AuditLog.entity_type == entity_type)
+    if entity_id is not None:
+        query = query.filter(AuditLog.entity_id == entity_id)
     if action:
         query = query.filter(AuditLog.action == action.upper())
     if date_from:

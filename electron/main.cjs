@@ -110,6 +110,69 @@ ipcMain.handle('open-external', async (_event, url) => {
   await shell.openExternal(url);
 });
 
+// ─── Auto-Backup on Exit (Phase J) ───
+function runAutoBackup() {
+  const homeDir = process.env.USERPROFILE || process.env.APPDATA || require('os').homedir();
+  const appDataDir = path.join(homeDir, 'AmbikaTrading');
+  const backupDir = path.join(appDataDir, 'Backups');
+  const dbFile = path.join(appDataDir, 'ambika_trading.db');
+
+  if (!fs.existsSync(dbFile)) {
+    console.log('[Auto-Backup] Database file does not exist yet, skipping backup.');
+    return;
+  }
+
+  try {
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const backupFileName = `ambika_backup_${timestamp}.db`;
+    const backupPath = path.join(backupDir, backupFileName);
+
+    // Copy database file
+    fs.copyFileSync(dbFile, backupPath);
+
+    // Verify backup file exists and has size
+    const stats = fs.statSync(backupPath);
+    if (stats.size === 0) {
+      console.error('[Auto-Backup] Backup file size is 0 bytes!');
+      try { fs.unlinkSync(backupPath); } catch {}
+      return;
+    }
+
+    console.log(`[Auto-Backup] Successfully created auto-backup: ${backupPath}`);
+
+    // Prune older backups: keep latest 30 only after successful new backup
+    const files = fs.readdirSync(backupDir)
+      .filter((f) => f.startsWith('ambika_backup_') && f.endsWith('.db'))
+      .map((f) => ({
+        name: f,
+        fullPath: path.join(backupDir, f),
+        mtime: fs.statSync(path.join(backupDir, f)).mtime.getTime(),
+      }))
+      .sort((a, b) => b.mtime - a.mtime); // newest first
+
+    if (files.length > 30) {
+      const toDelete = files.slice(30);
+      for (const item of toDelete) {
+        try {
+          fs.unlinkSync(item.fullPath);
+          console.log(`[Auto-Backup] Pruned old auto-backup: ${item.name}`);
+        } catch (delErr) {
+          console.warn(`[Auto-Backup] Could not delete old backup ${item.name}:`, delErr);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Auto-Backup] Error during automated backup on shutdown:', err);
+    // Allow safe application shutdown
+  }
+}
+
 // ─── Lifecycle ───
 app.whenReady().then(async () => {
   console.log('[Electron] Application starting...');
@@ -129,7 +192,17 @@ app.on('window-all-closed', () => {
   }
 });
 
+let isQuitting = false;
+
 app.on('before-quit', () => {
+  if (isQuitting) return;
+  isQuitting = true;
+  console.log('[Electron] Running automated exit backup...');
+  try {
+    runAutoBackup();
+  } catch (backupErr) {
+    console.error('[Electron] Auto-backup failed on shutdown:', backupErr);
+  }
   console.log('[Electron] Shutting down backend...');
   stopBackend();
 });

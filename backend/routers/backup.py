@@ -85,6 +85,97 @@ def create_backup(
     )
 
 
+def prune_old_backups(backup_dir: Path, max_keep: int = 30) -> list[str]:
+    """
+    Keep the latest max_keep automatic backups and delete older ones.
+    Only called AFTER a successful new backup.
+    Returns list of deleted filenames.
+    """
+    deleted = []
+    auto_backups = sorted(
+        backup_dir.glob("ambika_backup_*.db"),
+        key=lambda f: f.stat().st_mtime,
+        reverse=True
+    )
+    if len(auto_backups) > max_keep:
+        to_delete = auto_backups[max_keep:]
+        for f in to_delete:
+            try:
+                f.unlink()
+                deleted.append(f.name)
+                logger.info(f"Pruned older auto-backup: {f.name}")
+            except Exception as e:
+                logger.warning(f"Could not delete old backup {f.name}: {e}")
+    return deleted
+
+
+def perform_auto_backup() -> dict:
+    """
+    Perform an automated backup on application exit:
+    1. Copies the SQLite database to %USERPROFILE%/AmbikaTrading/Backups/
+    2. Format: ambika_backup_YYYYMMDD_HHMMSS.db
+    3. Validates backup integrity
+    4. Keeps latest 30 backups, deleting older ones only after successful new backup
+    """
+    settings.ensure_directories()
+    backup_dir = settings.BACKUP_DIR
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    db_path = settings.DATABASE_PATH
+    if not db_path.exists():
+        logger.warning(f"Auto-backup skipped: Database file does not exist at {db_path}")
+        return {"success": False, "reason": "Database file not found"}
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"ambika_backup_{timestamp}.db"
+    backup_path = backup_dir / backup_filename
+
+    try:
+        src = sqlite3.connect(str(db_path))
+        dst = sqlite3.connect(str(backup_path))
+        with dst:
+            src.backup(dst)
+        dst.close()
+        src.close()
+    except Exception as e:
+        logger.warning(f"Sqlite online backup failed, using copy2: {e}")
+        try:
+            shutil.copy2(str(db_path), str(backup_path))
+        except Exception as copy_err:
+            logger.error(f"Auto-backup copy failed: {copy_err}")
+            return {"success": False, "reason": str(copy_err)}
+
+    # Validate backup integrity
+    if not _validate_sqlite(backup_path):
+        logger.error(f"Auto-backup validation failed for {backup_path}")
+        try:
+            backup_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return {"success": False, "reason": "Backup verification failed"}
+
+    # Rotate / prune older backups (keeping latest 30)
+    pruned = prune_old_backups(backup_dir, max_keep=settings.MAX_AUTO_BACKUPS)
+
+    logger.info(f"Auto-backup successfully created: {backup_path}. Pruned: {len(pruned)}")
+    return {
+        "success": True,
+        "backup_path": str(backup_path),
+        "backup_filename": backup_filename,
+        "timestamp": timestamp,
+        "pruned": pruned,
+    }
+
+
+@router.post("/auto-backup")
+def trigger_auto_backup():
+    """Trigger an automatic backup with 30-backup retention."""
+    res = perform_auto_backup()
+    if not res.get("success"):
+        raise HTTPException(status_code=500, detail=res.get("reason", "Auto-backup failed"))
+    return res
+
+
 @router.post("/restore", response_model=RestoreResponse)
 def restore_backup(
     backup_path: str = Query(..., description="Path to the backup file to restore"),
@@ -134,6 +225,24 @@ def restore_backup(
         )
 
     logger.info(f"Database restored from: {source}")
+
+    # Log audit entry in restored database
+    try:
+        from database import SessionLocal
+        from services.audit_service import log_audit
+        with SessionLocal() as db_session:
+            log_audit(
+                db=db_session,
+                entity_type="Database",
+                entity_id=0,
+                action="RESTORE",
+                old_values={"safety_backup": str(safety_path) if db_path.exists() else None},
+                new_values={"restored_from": str(source)},
+                performed_by="operator",
+            )
+            db_session.commit()
+    except Exception as audit_err:
+        logger.warning(f"Could not record audit log after restore: {audit_err}")
 
     return RestoreResponse(
         message="Database restored successfully. Please restart the application.",

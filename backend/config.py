@@ -19,8 +19,8 @@ class Settings(BaseSettings):
 
     # Paths
     APP_DATA_DIR: Path = Path(os.environ.get(
-        "APPDATA",
-        os.path.expanduser("~")
+        "USERPROFILE",
+        os.environ.get("APPDATA", os.path.expanduser("~"))
     )) / "AmbikaTrading"
     
     DB_FILENAME: str = "ambika_trading.db"

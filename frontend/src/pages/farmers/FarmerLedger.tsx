@@ -32,6 +32,10 @@ export default function FarmerLedger() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Date range filter (Phase E)
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
   // Active tab
   const [activeTab, setActiveTab] = useState<'transactions' | 'payments'>('transactions');
 
@@ -41,14 +45,29 @@ export default function FarmerLedger() {
     }
   }, [id]);
 
-  async function loadFarmerData(farmerId: number) {
+  async function loadFarmerData(farmerId: number, fromDate = dateFrom, toDate = dateTo) {
     try {
       setLoading(true);
       setError(null);
+      const txnParams: { farmer_id: number; limit: number; date_from?: string; date_to?: string } = {
+        farmer_id: farmerId,
+        limit: 200,
+      };
+      const pmtParams: { date_from?: string; date_to?: string } = {};
+
+      if (fromDate) {
+        txnParams.date_from = fromDate;
+        pmtParams.date_from = fromDate;
+      }
+      if (toDate) {
+        txnParams.date_to = toDate;
+        pmtParams.date_to = toDate;
+      }
+
       const [farmerData, txnsData, paymentsData] = await Promise.all([
         farmerService.get(farmerId),
-        transactionService.list({ farmer_id: farmerId, limit: 100 }),
-        paymentService.listForFarmer(farmerId),
+        transactionService.list(txnParams),
+        paymentService.listForFarmer(farmerId, pmtParams),
       ]);
       setFarmer(farmerData);
       setTransactions(txnsData.items);
@@ -57,6 +76,21 @@ export default function FarmerLedger() {
       setError('Failed to load farmer ledger data');
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleFilterSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (id) {
+      loadFarmerData(parseInt(id, 10), dateFrom, dateTo);
+    }
+  }
+
+  function handleClearFilter() {
+    setDateFrom('');
+    setDateTo('');
+    if (id) {
+      loadFarmerData(parseInt(id, 10), '', '');
     }
   }
 
@@ -80,12 +114,17 @@ export default function FarmerLedger() {
     );
   }
 
-  // Financial aggregates
+  // Financial aggregates (Phase B: exclude cancelled transactions and their associated payments)
   const validTxns = transactions.filter((t) => t.status !== 'cancelled');
+  const validTxnIds = new Set(validTxns.map((t) => t.id));
+  const validPayments = payments.filter((p) =>
+    p.transaction_status ? p.transaction_status !== 'cancelled' : validTxnIds.has(p.transaction_id)
+  );
+
   const totalGross = validTxns.reduce((s, t) => s + t.gross_amount, 0);
   const totalDeductions = validTxns.reduce((s, t) => s + t.total_deductions, 0);
   const totalNetPayable = validTxns.reduce((s, t) => s + t.net_payable, 0);
-  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+  const totalPaid = validPayments.reduce((s, p) => s + p.amount, 0);
   const outstandingBalance = Math.max(0, Math.round((totalNetPayable - totalPaid) * 100) / 100);
 
   return (
@@ -149,6 +188,56 @@ export default function FarmerLedger() {
             <strong>Notes:</strong> {farmer.notes}
           </div>
         )}
+      </div>
+
+      {/* ── Date Range Filter Toolbar (Phase E) ── */}
+      <div className="card mb-4 no-print" style={{ padding: '1rem 1.25rem' }}>
+        <form onSubmit={handleFilterSubmit} className="flex items-center gap-3 flex-wrap">
+          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>📅 Statement Date Range:</span>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted" htmlFor="dateFrom">From:</label>
+            <input
+              id="dateFrom"
+              type="date"
+              className="form-control form-control-sm"
+              style={{ width: 'auto' }}
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted" htmlFor="dateTo">To:</label>
+            <input
+              id="dateTo"
+              type="date"
+              className="form-control form-control-sm"
+              style={{ width: 'auto' }}
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary btn-sm">
+            Apply Filter
+          </button>
+          {(dateFrom || dateTo) && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleClearFilter}
+            >
+              Clear Filter
+            </button>
+          )}
+          {(dateFrom || dateTo) ? (
+            <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
+              Showing filtered records from <strong>{dateFrom || 'earliest'}</strong> to <strong>{dateTo || 'latest'}</strong>
+            </span>
+          ) : (
+            <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
+              Showing all-time records
+            </span>
+          )}
+        </form>
       </div>
 
       {/* ── Financial KPI Stat Cards ── */}
@@ -287,26 +376,49 @@ export default function FarmerLedger() {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p, idx) => (
-                  <tr key={p.id}>
-                    <td className="text-muted">{idx + 1}</td>
-                    <td>{formatDate(p.payment_date)}</td>
-                    <td>
-                      <span className="badge badge-draft">{getPaymentModeLabel(p.payment_mode)}</span>
-                    </td>
-                    <td className="font-mono">
-                      <Link to={`/transactions/${p.transaction_id}`} className="no-print">
-                        Bill #{p.transaction_id}
-                      </Link>
-                      <span className="only-print">Bill #{p.transaction_id}</span>
-                      {p.reference_number && ` · Ref: ${p.reference_number}`}
-                    </td>
-                    <td className="text-muted">{p.notes || '—'}</td>
-                    <td className="amount currency text-success" style={{ fontWeight: 600 }}>
-                      {formatCurrency(p.amount)}
-                    </td>
-                  </tr>
-                ))}
+                {payments.map((p, idx) => {
+                  const isCancelled = p.transaction_status === 'cancelled';
+                  return (
+                    <tr
+                      key={p.id}
+                      style={isCancelled ? { opacity: 0.65, background: 'rgba(239, 68, 68, 0.04)' } : undefined}
+                    >
+                      <td className="text-muted">{idx + 1}</td>
+                      <td>{formatDate(p.payment_date)}</td>
+                      <td>
+                        <span className="badge badge-draft">{getPaymentModeLabel(p.payment_mode)}</span>
+                      </td>
+                      <td className="font-mono">
+                        <Link to={`/transactions/${p.transaction_id}`} className="no-print">
+                          {p.transaction_bill_number || `Bill #${p.transaction_id}`}
+                        </Link>
+                        <span className="only-print">
+                          {p.transaction_bill_number || `Bill #${p.transaction_id}`}
+                        </span>
+                        {p.reference_number && ` · Ref: ${p.reference_number}`}
+                        {isCancelled && (
+                          <span
+                            className="badge badge-danger"
+                            style={{ marginLeft: 8, fontSize: '0.72rem' }}
+                            title="This payment was recorded for a bill that was subsequently cancelled. It is preserved for audit history and excluded from financial totals."
+                          >
+                            Cancelled Bill (Excluded)
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-muted">{p.notes || '—'}</td>
+                      <td
+                        className={`amount currency ${isCancelled ? 'text-muted' : 'text-success'}`}
+                        style={{
+                          fontWeight: 600,
+                          textDecoration: isCancelled ? 'line-through' : 'none',
+                        }}
+                      >
+                        {formatCurrency(p.amount)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

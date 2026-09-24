@@ -71,12 +71,14 @@ def daily_summary(
     total_ded = float(totals[1])
     total_net = float(totals[2])
 
-    # Payments received in this date range
+    # Payments received in this date range (excluding cancelled transactions)
     total_payments = (
         db.query(func.coalesce(func.sum(Payment.amount), 0))
+        .join(Transaction, Payment.transaction_id == Transaction.id)
         .filter(
             Payment.payment_date >= date_from,
             Payment.payment_date <= date_to,
+            Transaction.status.in_(active_statuses),
         )
         .scalar()
     )
@@ -185,15 +187,23 @@ def payment_summary(
     if date_to is None:
         date_to = date_from
 
+    active_statuses = [
+        TransactionStatus.SAVED,
+        TransactionStatus.PARTIALLY_PAID,
+        TransactionStatus.FULLY_PAID,
+    ]
+
     results = (
         db.query(
             Payment.payment_mode,
             func.count(Payment.id),
             func.coalesce(func.sum(Payment.amount), 0),
         )
+        .join(Transaction, Payment.transaction_id == Transaction.id)
         .filter(
             Payment.payment_date >= date_from,
             Payment.payment_date <= date_to,
+            Transaction.status.in_(active_statuses),
         )
         .group_by(Payment.payment_mode)
         .all()

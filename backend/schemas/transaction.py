@@ -83,6 +83,7 @@ class TransactionCreate(BaseModel):
 
 class TransactionUpdate(BaseModel):
     """Schema for updating a transaction (limited to unpaid transactions)."""
+    farmer_id: int | None = None
     transaction_date: date | None = None
     items: list[TransactionItemCreate] | None = None
     deductions: DeductionCreate | None = None
@@ -102,6 +103,8 @@ class TransactionResponse(BaseModel):
     transaction_date: date
     farmer_id: int
     farmer_name: str | None = None  # Populated from join
+    farmer_mobile: str | None = None  # Populated from farmer relation (Phase D)
+    farmer_village: str | None = None  # Populated from farmer relation (Phase D)
 
     # Financial summary
     gross_amount: float
@@ -110,9 +113,10 @@ class TransactionResponse(BaseModel):
     total_paid: float
     balance_due: float
 
-    # Status
+    # Status & Reprint Tracking
     status: str
     cancel_reason: str | None
+    print_count: int = 0  # Phase G reprint tracking
 
     # Details
     items: list[TransactionItemResponse] = []
@@ -132,12 +136,15 @@ class TransactionListItem(BaseModel):
     transaction_date: date
     farmer_id: int
     farmer_name: str | None = None
+    farmer_mobile: str | None = None
+    farmer_village: str | None = None
     gross_amount: float
     total_deductions: float
     net_payable: float
     total_paid: float
     balance_due: float
     status: str
+    print_count: int = 0
     created_at: datetime
 
 

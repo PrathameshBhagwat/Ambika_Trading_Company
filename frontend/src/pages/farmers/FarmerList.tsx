@@ -68,6 +68,32 @@ export default function FarmerList() {
     try {
       setSaving(true);
       setError(null);
+
+      // Duplicate check warning
+      const dupCheck = await farmerService.checkDuplicate(
+        formData.name,
+        formData.mobile || null,
+        editingFarmer?.id
+      );
+
+      if (dupCheck.is_duplicate && dupCheck.matches.length > 0) {
+        const matchSummary = dupCheck.matches
+          .slice(0, 3)
+          .map(
+            (m) =>
+              `• ${m.name} ${m.village ? `(${m.village})` : ''} ${m.mobile ? `· ${m.mobile}` : ''} [${m.match_reason}]`
+          )
+          .join('\n');
+
+        const proceed = window.confirm(
+          `⚠️ Duplicate Farmer Warning / शेतकरी आधीच अस्तित्वात असण्याची शक्यता:\n\nA farmer with similar details already exists:\n\n${matchSummary}\n\nDo you want to continue and save this farmer anyway?\n(Cancel to review, OK to continue)`
+        );
+        if (!proceed) {
+          setSaving(false);
+          return;
+        }
+      }
+
       if (editingFarmer) {
         await farmerService.update(editingFarmer.id, formData);
       } else {

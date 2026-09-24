@@ -44,3 +44,17 @@ class FarmerListResponse(BaseModel):
     """Paginated list of farmers."""
     items: list[FarmerResponse]
     total: int
+
+
+class DuplicateFarmerMatch(BaseModel):
+    id: int
+    name: str
+    mobile: str | None = None
+    village: str | None = None
+    match_reason: str
+
+
+class DuplicateCheckResponse(BaseModel):
+    is_duplicate: bool
+    matches: list[DuplicateFarmerMatch]
+    message: str | None = None

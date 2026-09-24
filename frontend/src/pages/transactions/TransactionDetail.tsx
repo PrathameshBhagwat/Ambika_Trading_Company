@@ -69,7 +69,15 @@ export default function TransactionDetail() {
     }
   }
 
-  function handlePrint() {
+  async function handlePrint() {
+    try {
+      if (transaction) {
+        const updated = await transactionService.recordPrint(transaction.id);
+        setTransaction(updated);
+      }
+    } catch (e) {
+      console.error('Failed to record print count', e);
+    }
     // If running in Electron, use IPC print or standard window.print()
     if ((window as any).electronAPI?.printBill) {
       (window as any).electronAPI.printBill();
@@ -165,6 +173,8 @@ export default function TransactionDetail() {
   const status = getStatusDisplay(transaction.status);
   const isCancelled = transaction.status === 'cancelled';
   const isFullyPaid = transaction.status === 'fully_paid';
+  const isUnpaidSaved = transaction.status === 'saved' && transaction.total_paid === 0;
+  const isDuplicate = !isCancelled && (transaction.print_count !== undefined && transaction.print_count >= 1);
 
   return (
     <div>
@@ -179,11 +189,26 @@ export default function TransactionDetail() {
             <p className="page-subtitle">
               Settlement Bill for <strong>{transaction.farmer_name}</strong> ·{' '}
               {formatDate(transaction.transaction_date)}
+              {isDuplicate && (
+                <span className="badge badge-warning" style={{ marginLeft: 8 }}>
+                  DUPLICATE (Printed {transaction.print_count}x)
+                </span>
+              )}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Phase C: Edit Bill button (only when saved & unpaid) */}
+          {isUnpaidSaved && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/transactions/edit/${transaction.id}`)}
+            >
+              ✏️ Edit Bill
+            </button>
+          )}
+
           {!isCancelled && !isFullyPaid && (
             <button className="btn btn-success" onClick={openPaymentModal}>
               💰 Record Payment
@@ -191,7 +216,7 @@ export default function TransactionDetail() {
           )}
 
           <button className="btn btn-primary" onClick={handlePrint}>
-            🖨️ Print Bill / पावती
+            🖨️ {isDuplicate ? 'Print Duplicate Bill' : 'Print Bill / पावती'}
           </button>
 
           {!isCancelled && (
@@ -208,7 +233,7 @@ export default function TransactionDetail() {
       {/* ── Settlement Bill Printable Slip ── */}
       <div className="card bill-container" id="printable-bill" style={{ position: 'relative' }}>
         {/* Cancelled watermark */}
-        {isCancelled && (
+        {isCancelled ? (
           <div
             style={{
               position: 'absolute',
@@ -228,7 +253,28 @@ export default function TransactionDetail() {
           >
             CANCELLED
           </div>
-        )}
+        ) : isDuplicate ? (
+          /* Phase G: Duplicate bill watermark for 2nd and subsequent prints */
+          <div
+            style={{
+              position: 'absolute',
+              top: '35%',
+              left: '50%',
+              transform: 'translate(-50%, -50%) rotate(-25deg)',
+              fontSize: '4.5rem',
+              fontWeight: 800,
+              color: 'rgba(245, 158, 11, 0.25)',
+              border: '4px dashed rgba(245, 158, 11, 0.4)',
+              padding: '10px 40px',
+              borderRadius: '8px',
+              pointerEvents: 'none',
+              zIndex: 10,
+              textTransform: 'uppercase',
+            }}
+          >
+            DUPLICATE
+          </div>
+        ) : null}
 
         {/* Bill Header */}
         <div
@@ -259,13 +305,13 @@ export default function TransactionDetail() {
           </div>
         </div>
 
-        {/* Farmer Info Bar */}
+        {/* Farmer Info Bar (Phase D: Farmer Name, Mobile, Village) */}
         <div
-          className="grid grid-3 gap-3 p-3 mb-4"
+          className="grid grid-4 gap-3 p-3 mb-4"
           style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}
         >
           <div>
-            <div className="text-xs text-muted">Farmer Name / शेतकरी:</div>
+            <div className="text-xs text-muted">Farmer / शेतकरी:</div>
             <div style={{ fontWeight: 600, fontSize: '1.05rem' }}>
               <Link to={`/farmers/${transaction.farmer_id}`} className="no-print">
                 {transaction.farmer_name}
@@ -274,12 +320,16 @@ export default function TransactionDetail() {
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted">Bill ID:</div>
-            <div className="font-mono text-sm">#{transaction.id}</div>
+            <div className="text-xs text-muted">Mobile / मोबाईल:</div>
+            <div style={{ fontWeight: 600 }}>{transaction.farmer_mobile || '—'}</div>
           </div>
           <div>
-            <div className="text-xs text-muted">Created Timestamp:</div>
-            <div className="text-sm">{new Date(transaction.created_at).toLocaleString()}</div>
+            <div className="text-xs text-muted">Village / गाव:</div>
+            <div style={{ fontWeight: 600 }}>{transaction.farmer_village || '—'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted">Bill ID:</div>
+            <div className="font-mono text-sm">#{transaction.id}</div>
           </div>
         </div>
 

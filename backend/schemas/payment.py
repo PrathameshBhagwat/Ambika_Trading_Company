@@ -47,6 +47,8 @@ class PaymentResponse(BaseModel):
     reference_number: str | None
     notes: str | None
     created_at: datetime
+    transaction_status: str | None = None
+    transaction_bill_number: str | None = None
 
 
 class PaymentListResponse(BaseModel):

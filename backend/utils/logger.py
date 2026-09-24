@@ -28,6 +28,13 @@ def setup_logger(name: str = "ambika") -> logging.Logger:
     if logger.handlers:
         return logger
 
+    # Ensure stdout handles UTF-8 on Windows
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
     # Console handler (INFO level)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)

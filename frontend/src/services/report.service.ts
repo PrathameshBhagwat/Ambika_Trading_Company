@@ -3,7 +3,7 @@
  */
 
 import api from './api';
-import type { DailySummary, FarmerOutstandingItem } from '../types';
+import type { DailySummary, FarmerOutstandingItem, PaymentSummaryReport } from '../types';
 
 export const reportService = {
   dailySummary: async (dateFrom: string, dateTo?: string): Promise<DailySummary> => {
@@ -21,7 +21,7 @@ export const reportService = {
     return data;
   },
 
-  paymentSummary: async (dateFrom: string, dateTo?: string) => {
+  paymentSummary: async (dateFrom: string, dateTo?: string): Promise<PaymentSummaryReport> => {
     const params: Record<string, string> = { date_from: dateFrom };
     if (dateTo) params.date_to = dateTo;
     const { data } = await api.get('/api/reports/payment-summary', { params });

@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { farmerService } from '../../services/farmer.service';
 import { vegetableService } from '../../services/vegetable.service';
 import { transactionService } from '../../services/transaction.service';
@@ -36,11 +36,15 @@ interface LineItemState {
 
 export default function TransactionForm() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
+  const isEdit = Boolean(id);
 
   // Reference lists
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [vegetables, setVegetables] = useState<Vegetable[]>([]);
   const [loadingMasters, setLoadingMasters] = useState(true);
+  const [loadingTxn, setLoadingTxn] = useState(false);
+  const [billNumber, setBillNumber] = useState<string>('');
 
   // Form state
   const [transactionDate, setTransactionDate] = useState(todayISO());
@@ -109,6 +113,56 @@ export default function TransactionForm() {
       setError('Failed to load farmer or vegetable lists.');
     } finally {
       setLoadingMasters(false);
+    }
+  }
+
+  useEffect(() => {
+    if (id) {
+      loadExistingTransaction(Number(id));
+    }
+  }, [id]);
+
+  async function loadExistingTransaction(txnId: number) {
+    try {
+      setLoadingTxn(true);
+      const txn = await transactionService.get(txnId);
+      if (txn.status !== 'saved' || (txn.total_paid && txn.total_paid > 0)) {
+        setError(
+          `Cannot edit bill ${txn.bill_number}: Status is '${txn.status}' with paid amount of ${formatCurrency(txn.total_paid)}. Only unpaid saved transactions can be edited.`
+        );
+        return;
+      }
+      setBillNumber(txn.bill_number);
+      setTransactionDate(txn.transaction_date);
+      setSelectedFarmerId(txn.farmer_id);
+      if (txn.items && txn.items.length > 0) {
+        setItems(
+          txn.items.map((it) => ({
+            id: it.id.toString(),
+            vegetable_id: it.vegetable_id,
+            bags_count: it.bags_count,
+            weight_kg: it.weight_kg,
+            rate_per_10kg: it.rate_per_10kg,
+            calculated_amount: it.item_amount,
+          }))
+        );
+      }
+      if (txn.deduction) {
+        setDeductions({
+          hamali: txn.deduction.hamali,
+          bharai: txn.deduction.bharai,
+          tolai: txn.deduction.tolai,
+          mapai: txn.deduction.mapai,
+          lekki: txn.deduction.lekki,
+          motor_bhada: txn.deduction.motor_bhada,
+          other_deductions: txn.deduction.other_deductions,
+          other_deductions_note: txn.deduction.other_deductions_note || '',
+        });
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load transaction for editing.');
+    } finally {
+      setLoadingTxn(false);
     }
   }
 
@@ -279,6 +333,20 @@ export default function TransactionForm() {
         },
       };
 
+      if (isEdit) {
+        const confirmed = window.confirm(
+          `Confirm modifications to Bill ${billNumber}?\n\nAll amounts, weight, and deductions will be recalculated server-side.`
+        );
+        if (!confirmed) {
+          setSaving(false);
+          return;
+        }
+
+        const updatedTxn = await transactionService.update(Number(id), payload);
+        navigate(`/transactions/${updatedTxn.id}`);
+        return;
+      }
+
       const createdTxn = await transactionService.create(payload);
 
       // Record immediate payment if checked
@@ -309,6 +377,31 @@ export default function TransactionForm() {
 
     try {
       setCreatingFarmer(true);
+
+      // Check duplicate farmer warning
+      const dupCheck = await farmerService.checkDuplicate(
+        quickFarmerData.name,
+        quickFarmerData.mobile || null
+      );
+
+      if (dupCheck.is_duplicate && dupCheck.matches.length > 0) {
+        const matchSummary = dupCheck.matches
+          .slice(0, 3)
+          .map(
+            (m) =>
+              `• ${m.name} ${m.village ? `(${m.village})` : ''} ${m.mobile ? `· ${m.mobile}` : ''} [${m.match_reason}]`
+          )
+          .join('\n');
+
+        const proceed = window.confirm(
+          `⚠️ Duplicate Farmer Warning / शेतकरी आधीच अस्तित्वात असण्याची शक्यता:\n\nA farmer with similar details already exists:\n\n${matchSummary}\n\nDo you want to continue registering this farmer anyway?\n(Cancel to review, OK to continue)`
+        );
+        if (!proceed) {
+          setCreatingFarmer(false);
+          return;
+        }
+      }
+
       const newFarmer = await farmerService.create(quickFarmerData);
       setFarmers((prev) => [newFarmer, ...prev]);
       setSelectedFarmerId(newFarmer.id);
@@ -325,11 +418,21 @@ export default function TransactionForm() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">New Farmer Settlement</h1>
-          <p className="page-subtitle">नवीन शेतकरी हिशोब पट्टी — Record vegetable delivery & deductions</p>
+          <h1 className="page-title">
+            {isEdit ? `Edit Settlement Bill — ${billNumber}` : 'New Farmer Settlement'}
+          </h1>
+          <p className="page-subtitle">
+            {isEdit
+              ? `पावती दुरुस्ती — Bill Number ${billNumber} will be preserved; amounts will be recalculated server-side`
+              : 'नवीन शेतकरी हिशोब पट्टी — Record vegetable delivery & deductions'}
+          </p>
         </div>
-        <button type="button" className="btn btn-secondary" onClick={() => navigate('/transactions')}>
-          ← Back to Transactions
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
+        >
+          ← {isEdit ? 'Cancel & Return to Bill' : 'Back to Transactions'}
         </button>
       </div>
 
@@ -339,7 +442,7 @@ export default function TransactionForm() {
         </div>
       )}
 
-      {loadingMasters ? (
+      {loadingMasters || loadingTxn ? (
         <div className="loading-overlay">
           <div className="spinner" />
         </div>
@@ -688,67 +791,69 @@ export default function TransactionForm() {
               </div>
             </div>
 
-            {/* Optional instant payment checkbox */}
-            <div className="p-3 mb-3" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-              <label className="flex items-center gap-2 cursor-pointer" style={{ userSelect: 'none' }}>
-                <input
-                  type="checkbox"
-                  checked={recordPaymentNow}
-                  onChange={(e) => setRecordPaymentNow(e.target.checked)}
-                />
-                <span style={{ fontWeight: 600 }}>Record Payment to Farmer Now / लगेच रक्कम प्रदान करा</span>
-              </label>
+            {/* Optional instant payment checkbox (Only when creating new transaction) */}
+            {!isEdit && (
+              <div className="p-3 mb-3" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                <label className="flex items-center gap-2 cursor-pointer" style={{ userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={recordPaymentNow}
+                    onChange={(e) => setRecordPaymentNow(e.target.checked)}
+                  />
+                  <span style={{ fontWeight: 600 }}>Record Payment to Farmer Now / लगेच रक्कम प्रदान करा</span>
+                </label>
 
-              {recordPaymentNow && (
-                <div className="grid grid-3 gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-default)' }}>
-                  <div className="form-group mb-0">
-                    <label className="form-label">Payment Amount (₹)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max={netPayable}
-                      className="form-input"
-                      value={paymentAmount}
-                      onChange={(e) =>
-                        setPaymentAmount(e.target.value ? parseFloat(e.target.value) : '')
-                      }
-                      placeholder={netPayable.toString()}
-                    />
+                {recordPaymentNow && (
+                  <div className="grid grid-3 gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-default)' }}>
+                    <div className="form-group mb-0">
+                      <label className="form-label">Payment Amount (₹)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        max={netPayable}
+                        className="form-input"
+                        value={paymentAmount}
+                        onChange={(e) =>
+                          setPaymentAmount(e.target.value ? parseFloat(e.target.value) : '')
+                        }
+                        placeholder={netPayable.toString()}
+                      />
+                    </div>
+                    <div className="form-group mb-0">
+                      <label className="form-label">Payment Mode</label>
+                      <select
+                        className="form-select"
+                        value={paymentMode}
+                        onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
+                      >
+                        <option value="cash">Cash (रोख)</option>
+                        <option value="upi">UPI / Online</option>
+                        <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
+                        <option value="cheque">Cheque</option>
+                      </select>
+                    </div>
+                    <div className="form-group mb-0">
+                      <label className="form-label">Reference No. (Optional)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="e.g. UPI Ref / Cheque No."
+                        value={paymentRef}
+                        onChange={(e) => setPaymentRef(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="form-group mb-0">
-                    <label className="form-label">Payment Mode</label>
-                    <select
-                      className="form-select"
-                      value={paymentMode}
-                      onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
-                    >
-                      <option value="cash">Cash (रोख)</option>
-                      <option value="upi">UPI / Online</option>
-                      <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
-                      <option value="cheque">Cheque</option>
-                    </select>
-                  </div>
-                  <div className="form-group mb-0">
-                    <label className="form-label">Reference No. (Optional)</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. UPI Ref / Cheque No."
-                      value={paymentRef}
-                      onChange={(e) => setPaymentRef(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Form actions */}
             <div className="flex justify-end gap-3">
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => navigate('/transactions')}
+                onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
                 disabled={saving}
               >
                 Cancel
@@ -758,7 +863,7 @@ export default function TransactionForm() {
                 className="btn btn-primary btn-lg"
                 disabled={saving || grossAmount <= 0}
               >
-                {saving ? 'Saving Bill...' : '💾 Save & Generate Settlement Bill'}
+                {saving ? 'Saving...' : isEdit ? `💾 Save Changes to ${billNumber}` : '💾 Save & Generate Settlement Bill'}
               </button>
             </div>
           </div>

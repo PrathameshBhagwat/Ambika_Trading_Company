@@ -37,4 +37,14 @@ export const transactionService = {
     const { data } = await api.post(`/api/transactions/${id}/cancel`, { cancel_reason });
     return data;
   },
+
+  update: async (id: number, txn: any): Promise<TransactionResponse> => {
+    const { data } = await api.put(`/api/transactions/${id}`, txn);
+    return data;
+  },
+
+  recordPrint: async (id: number): Promise<TransactionResponse> => {
+    const { data } = await api.post(`/api/transactions/${id}/print`);
+    return data;
+  },
 };
