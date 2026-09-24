@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+backend/__pycache__/
+backend/*/__pycache__/
+backend/*/*/__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build outputs
+dist/
+frontend/dist/
+build/
+*.exe
+
+# Databases & Backups
+*.db
+*.sqlite
+*.sqlite3
+data/
+backups/
+
+# Logs & Environment
+*.log
+.env
+.DS_Store
+Thumbs.db

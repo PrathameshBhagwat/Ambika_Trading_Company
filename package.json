@@ -1,0 +1,23 @@
+{
+  "name": "ambika-trading",
+  "version": "1.0.0",
+  "description": "Ambika Trading - Farmer Settlement Management System",
+  "main": "electron/main.cjs",
+  "private": true,
+  "scripts": {
+    "backend:start": "cd backend && python main.py",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "electron:dev": "cross-env NODE_ENV=development wait-on http://localhost:5173 && electron .",
+    "dev": "concurrently -k \"npm run backend:start\" \"npm run frontend:dev\"",
+    "dev:desktop": "concurrently -k \"npm run backend:start\" \"npm run frontend:dev\" \"npm run electron:dev\"",
+    "start": "electron .",
+    "test:backend": "cd backend && python -m pytest tests/ -v"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^34.3.0",
+    "wait-on": "^8.0.2"
+  }
+}
