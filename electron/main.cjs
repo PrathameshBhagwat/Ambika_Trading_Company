@@ -6,9 +6,12 @@
 
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { startBackend, stopBackend } = require('./backend-manager.cjs');
 
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const distPath = path.join(__dirname, '..', 'frontend', 'dist', 'index.html');
+const distExists = fs.existsSync(distPath);
+const isDev = process.env.NODE_ENV === 'development' || (!distExists && !app.isPackaged);
 let mainWindow = null;
 
 async function createWindow() {
