@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import FarmerList from './pages/farmers/FarmerList';
 import FarmerLedger from './pages/farmers/FarmerLedger';
@@ -23,26 +23,7 @@ import PaymentSummary from './pages/reports/PaymentSummary';
 import BackupRestore from './pages/settings/BackupRestore';
 import './App.css';
 
-function getPageInfo(pathname: string): { title: string; subtitle: string } {
-  if (pathname === '/') return { title: 'Dashboard', subtitle: 'आजचा आढावा — Today\'s Overview' };
-  if (pathname === '/transactions/new') return { title: 'नवीन हिशोब पट्टी', subtitle: 'New Farmer Settlement' };
-  if (pathname.startsWith('/transactions/edit')) return { title: 'पावती दुरुस्ती', subtitle: 'Edit Settlement Bill' };
-  if (pathname.startsWith('/transactions/')) return { title: 'हिशोब पावती', subtitle: 'Settlement Bill Details' };
-  if (pathname === '/transactions') return { title: 'Transactions', subtitle: 'सर्व व्यवहार — All Settlements' };
-  if (pathname === '/farmers') return { title: 'शेतकरी', subtitle: 'Farmers Directory' };
-  if (pathname.startsWith('/farmers/')) return { title: 'शेतकरी खातेवही', subtitle: 'Farmer Ledger' };
-  if (pathname === '/vegetables') return { title: 'भाजीपाला', subtitle: 'Vegetable Master' };
-  if (pathname === '/reports/daily') return { title: 'दैनिक सारांश', subtitle: 'Daily Summary Report' };
-  if (pathname === '/reports/outstanding') return { title: 'बाकी रक्कम', subtitle: 'Farmer Outstanding' };
-  if (pathname === '/reports/payments') return { title: 'पेमेंट सारांश', subtitle: 'Payment Summary' };
-  if (pathname === '/settings/backup') return { title: 'बॅकअप', subtitle: 'Backup & Audit' };
-  return { title: 'Ambika Trading', subtitle: '' };
-}
-
 function App() {
-  const location = useLocation();
-  const pageInfo = getPageInfo(location.pathname);
-
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('ambika-theme');
     return saved === 'dark' ? 'dark' : 'light';
@@ -60,6 +41,22 @@ function App() {
     month: '2-digit',
     year: 'numeric',
   });
+  const [globalSearch, setGlobalSearch] = useState('');
+
+  // Handle global F2 shortcut to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        const searchInput = document.getElementById('global-search-input');
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="app-layout">
@@ -67,100 +64,131 @@ function App() {
       <aside className="app-sidebar no-print">
         <div className="sidebar-brand">
           <div className="sidebar-brand-icon">🌿</div>
-          <div>
-            <h1>Ambika Trading</h1>
+          <div className="sidebar-brand-title">
+            <h1>मे. अंबिका ट्रेडिंग कंपनी</h1>
             <p>Farmer Settlement System</p>
           </div>
         </div>
 
         <nav className="sidebar-nav">
           <div className="sidebar-section">
-            <div className="sidebar-section-title">Overview</div>
+            <div className="sidebar-section-title">OVERVIEW • आढावा</div>
             <NavLink
               to="/"
               end
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">📊</span>
-              Dashboard
+              <div className="nav-label-group">
+                <span className="nav-main">Dashboard</span>
+                <span className="nav-sub">डॅशबोर्ड</span>
+              </div>
             </NavLink>
           </div>
 
           <div className="sidebar-section">
-            <div className="sidebar-section-title">Operations</div>
+            <div className="sidebar-section-title">OPERATIONS • व्यवहार</div>
             <NavLink
               to="/transactions/new"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">✍️</span>
-              नवीन हिशोब पट्टी
+              <div className="nav-label-group">
+                <span className="nav-main">New Settlement</span>
+                <span className="nav-sub">नवीन हिशोब पट्टी</span>
+              </div>
             </NavLink>
             <NavLink
               to="/transactions"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">📋</span>
-              Transactions
+              <div className="nav-label-group">
+                <span className="nav-main">Transactions</span>
+                <span className="nav-sub">व्यवहार नोंद</span>
+              </div>
             </NavLink>
           </div>
 
           <div className="sidebar-section">
-            <div className="sidebar-section-title">Masters</div>
+            <div className="sidebar-section-title">MASTERS • मास्टर यादी</div>
             <NavLink
               to="/farmers"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
-              <span className="icon">👨‍🌾</span>
-              शेतकरी / Farmers
+              <span className="icon">👥</span>
+              <div className="nav-label-group">
+                <span className="nav-main">Farmers</span>
+                <span className="nav-sub">शेतकरी यादी</span>
+              </div>
             </NavLink>
             <NavLink
               to="/vegetables"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">🥬</span>
-              भाजीपाला / Vegetables
+              <div className="nav-label-group">
+                <span className="nav-main">Vegetables</span>
+                <span className="nav-sub">भाजीपाला दर</span>
+              </div>
             </NavLink>
           </div>
 
           <div className="sidebar-section">
-            <div className="sidebar-section-title">Reports</div>
+            <div className="sidebar-section-title">REPORTS • हिशोब अहवाल</div>
             <NavLink
               to="/reports/daily"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">📅</span>
-              Daily Summary
+              <div className="nav-label-group">
+                <span className="nav-main">Daily Summary</span>
+                <span className="nav-sub">दैनिक अहवाल</span>
+              </div>
             </NavLink>
             <NavLink
               to="/reports/outstanding"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">💰</span>
-              Outstanding
+              <div className="nav-label-group">
+                <span className="nav-main">Outstanding</span>
+                <span className="nav-sub">शिल्लक बाकी</span>
+              </div>
             </NavLink>
             <NavLink
               to="/reports/payments"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">💳</span>
-              Payment Summary
+              <div className="nav-label-group">
+                <span className="nav-main">Payment Summary</span>
+                <span className="nav-sub">पेमेंट सारांश</span>
+              </div>
             </NavLink>
           </div>
 
           <div className="sidebar-section">
-            <div className="sidebar-section-title">System</div>
+            <div className="sidebar-section-title">SYSTEM • प्रणाली</div>
             <NavLink
               to="/settings/backup"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
-              <span className="icon">💾</span>
-              Backup & Audit
+              <span className="icon">🛡️</span>
+              <div className="nav-label-group">
+                <span className="nav-main">Backup & Audit</span>
+                <span className="nav-sub">डेटाबेस व सुरक्षा</span>
+              </div>
             </NavLink>
           </div>
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sidebar-version">v1.0.0 · Offline Desktop</div>
+          <div className="sidebar-version-pill">
+            <span className="status-dot"></span>
+            v1.0.0 • Offline Desktop
+          </div>
+          <div className="sidebar-port">Active Local Port 8741</div>
         </div>
       </aside>
 
@@ -169,16 +197,46 @@ function App() {
         {/* Top Bar */}
         <div className="app-topbar no-print">
           <div className="topbar-left">
-            <span className="topbar-page-title">{pageInfo.title}</span>
-            {pageInfo.subtitle && (
-              <span className="topbar-page-subtitle">— {pageInfo.subtitle}</span>
-            )}
+            <div className="topbar-mandi-badge">
+              <span className="calendar-icon">📅</span>
+              <span className="mandi-label">Mandi Date:</span>
+              <span className="mandi-value">{todayFormatted}</span>
+            </div>
+
+            <div className="topbar-search">
+              <span className="search-icon">🔍</span>
+              <input
+                id="global-search-input"
+                type="text"
+                placeholder="Search farmer, lot, bill... (F2)"
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && globalSearch.trim()) {
+                    window.location.hash = `#/transactions?search=${encodeURIComponent(globalSearch.trim())}`;
+                  }
+                }}
+              />
+            </div>
           </div>
+
           <div className="topbar-right">
-            <span className="topbar-date">{todayFormatted}</span>
-            <button className="theme-toggle" onClick={toggleTheme} title="Switch theme">
-              {theme === 'light' ? '🌙' : '☀️'} {theme === 'light' ? 'Dark' : 'Light'}
+            <div className="topbar-status-badge">
+              <span className="status-indicator-dot"></span>
+              SQLite Synchronized
+            </div>
+
+            <NavLink to="/transactions/new" className="btn btn-primary btn-sm topbar-action-btn">
+              + New Settlement
+            </NavLink>
+
+            <button className="theme-toggle-btn" onClick={toggleTheme} title="Switch Light/Dark theme">
+              {theme === 'light' ? '🌙' : '☀️'}
             </button>
+
+            <div className="topbar-operator-badge" title="Ambika Trading Counter Operator">
+              <span className="operator-icon">👤</span>
+            </div>
           </div>
         </div>
 

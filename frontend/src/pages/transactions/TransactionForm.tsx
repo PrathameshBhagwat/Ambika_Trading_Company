@@ -1,27 +1,13 @@
 /**
- * Ambika Trading — Transaction Entry Form
+ * Ambika Trading — Settlement Bill Entry Form
  *
- * UI designed to match the physical Ambika Trading paper bill layout:
+ * Polished 4-Section Layout inspired by Mandi Trading System workflow:
+ * 1. Farmer & Bill Information / शेतकरी तपशील
+ * 2. Vegetables & Weights / भाजीपाला व वजन तपशील
+ * 3. Deductions / खर्च व कपात वजावट
+ * 4. Settlement Summary / अंतिम हिशोब
  *
- *   ┌──────────────── COMPANY HEADER ────────────────┐
- *   │  मे. अंबिका ट्रेडिंग कंपनी       Bill / दि.  │
- *   ├──────────────── FARMER / DATE ─────────────────┤
- *   │  दिनांक: ____   मालन्याचे नाव: ____  गाव: __  │
- *   ├────────── ITEMS ──────────┬── DEDUCTIONS ──────┤
- *   │ मालाचा प्रकार | वजन | दर │  हमली    ₹____     │
- *   │ | एकुण रुपये              │  भराई    ₹____     │
- *   │                           │  तोलाई   ₹____     │
- *   │                           │  मापाई   ₹____     │
- *   │                           │  लेक्ही   ₹____     │
- *   │                           │  मो.भाडे  ₹____     │
- *   │ Totals: Bags / KG / Gross │  एकुण खर्च ₹____   │
- *   ├───────────────────────────┴────────────────────┤
- *   │ एकुण रुपये | वजा खर्च | ना. शिल्लक (Net)      │
- *   └────────────────────────────────────────────────┘
- *
- * IMPORTANT: Business logic is NOT changed.
- * All calculations use the same formulas.
- * Backend remains the source of truth for final amounts.
+ * IMPORTANT: Business logic, backend APIs, and calculations are strictly preserved.
  */
 
 import { useState, useEffect } from 'react';
@@ -30,7 +16,7 @@ import { farmerService } from '../../services/farmer.service';
 import { vegetableService } from '../../services/vegetable.service';
 import { transactionService } from '../../services/transaction.service';
 import { paymentService } from '../../services/payment.service';
-import { formatCurrency, todayISO } from '../../utils/formatters';
+import { formatCurrency, todayISO, amountToWordsMarathi } from '../../utils/formatters';
 import type {
   Farmer,
   FarmerCreate,
@@ -276,6 +262,58 @@ export default function TransactionForm() {
 
   const selectedFarmer = farmers.find((f) => f.id === selectedFarmerId);
 
+  // Clear form
+  function handleClearForm() {
+    if (window.confirm('नवीन पावतीसाठी फॉर्म साफ करायचा आहे का? / Clear form for new bill?')) {
+      setSelectedFarmerId('');
+      setFarmerSearch('');
+      setBuyerName('');
+      setItems([
+        {
+          id: Date.now().toString(),
+          vegetable_id: '',
+          bags_count: '',
+          weight_kg: '',
+          rate_per_10kg: '',
+          calculated_amount: 0,
+        },
+      ]);
+      setDeductions({
+        hamali: 0,
+        bharai: 0,
+        tolai: 0,
+        mapai: 0,
+        lekki: 0,
+        motor_bhada: 0,
+        other_deductions: 0,
+        other_deductions_note: '',
+      });
+      setRecordPaymentNow(false);
+      setPaymentAmount('');
+      setPaymentRef('');
+      setError(null);
+    }
+  }
+
+  // Keyboard shortcut handler (Ctrl+S / F4)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        const submitBtn = document.getElementById('btn-save-bill-main');
+        if (submitBtn && !saving && grossAmount > 0) {
+          submitBtn.click();
+        }
+      }
+      if (e.key === 'F4') {
+        e.preventDefault();
+        addItemRow();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [saving, grossAmount, items]);
+
   // Submit Handler
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -446,63 +484,66 @@ export default function TransactionForm() {
   }
 
   return (
-    <div>
-      {/* Page Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">
-            {isEdit ? `पावती दुरुस्ती — ${billNumber}` : 'नवीन हिशोब पट्टी / New Settlement'}
-          </h1>
-          <p className="page-subtitle">
-            {isEdit
-              ? `Edit Settlement Bill — Bill Number ${billNumber} will be preserved`
-              : 'शेतकरी भाजीपाला वितरण व कपात नोंदवा — Record vegetable delivery & deductions'}
-          </p>
+    <div className="settlement-form-container">
+      {/* ─── Top Bar / Header ─── */}
+      <div className="sf-top-bar">
+        <div className="sf-title-group">
+          <div className="sf-title-icon">📋</div>
+          <div className="sf-title-text">
+            <h1>{isEdit ? `पावती दुरुस्ती — ${billNumber}` : 'नवीन हिशोब पट्टी / New Settlement'}</h1>
+            <p>
+              {isEdit
+                ? `Edit Settlement Bill — Bill Number ${billNumber} will be preserved`
+                : 'शेतकरी भाजीपाला वितरण व कपात नोंदवा — Fast Mandi Settlement Billing & Weight Ledger'}
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
-        >
-          ← {isEdit ? 'Cancel' : 'Back'}
-        </button>
+        <div className="sf-top-actions">
+          {!isEdit && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleClearForm}
+              title="Clear all fields"
+            >
+              ⟲ Clear Form
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
+          >
+            ← {isEdit ? 'Back to Voucher' : 'Back to Transactions'}
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="toast toast-error mb-4" style={{ position: 'static', maxWidth: 1100, margin: '0 auto var(--space-4)' }}>
+        <div className="toast toast-error mb-2" style={{ position: 'static', margin: 0 }}>
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="bill-form">
-
-          {/* ═══════════════════════════════════════════════════
-              BILL HEADER — Company Name Strip
-             ═══════════════════════════════════════════════════ */}
-          <div className="bill-header">
-            <div className="bill-header-left">
-              <div className="bill-header-icon">🏪</div>
-              <div className="bill-header-text">
-                <h2>मे. अंबिका ट्रेडिंग कंपनी</h2>
-                <p>सर्व प्रकारचे भाजीपाला व तरकारी मालाचे आडतदार</p>
-              </div>
+      <form onSubmit={handleSubmit} style={{ display: 'contents' }}>
+        {/* ═══════════════════════════════════════════════════
+            SECTION 1: Farmer & Bill Information / शेतकरी तपशील
+           ═══════════════════════════════════════════════════ */}
+        <section className="sf-card">
+          <div className="sf-card-header">
+            <div className="sf-card-title-group">
+              <span className="sf-card-icon">👤</span>
+              <h2>1. Farmer & Bill Information <span className="sf-subtitle">/ शेतकरी तपशील</span></h2>
             </div>
-            <div className="bill-header-right">
-              <div className="bill-type-label">
-                {isEdit ? 'EDIT BILL / पावती दुरुस्ती' : 'SETTLEMENT BILL / हिशोब पट्टी'}
-              </div>
-              {isEdit && <div className="bill-type-value">#{billNumber}</div>}
+            <div className="sf-card-badge sf-badge-bill">
+              पावती क्र. / Bill No: {isEdit ? billNumber : 'AT-AUTO'}
             </div>
           </div>
 
-          {/* ═══════════════════════════════════════════════════
-              BILL INFO ROW — Date + Farmer + Buyer Selection
-             ═══════════════════════════════════════════════════ */}
-          <div className="bill-info-section">
-            <div className="bill-info-row">
+          <div className="sf-card-body">
+            <div className="sf-farmer-grid">
               {/* Date */}
-              <div className="form-group" style={{ minWidth: 160 }}>
+              <div className="form-group mb-0">
                 <label className="form-label">
                   दिनांक / Date <span className="text-danger">*</span>
                 </label>
@@ -515,17 +556,27 @@ export default function TransactionForm() {
                 />
               </div>
 
-              {/* Farmer */}
-              <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label">
-                  मालधण्याचे नाव / Farmer Name <span className="text-danger">*</span>
-                </label>
-                <div className="bill-farmer-select">
+              {/* Farmer Select + Search */}
+              <div className="form-group mb-0">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                  <label className="form-label mb-0">
+                    मालधण्याचे नाव / Farmer Name <span className="text-danger">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm text-primary"
+                    style={{ padding: '0 4px', fontSize: 11 }}
+                    onClick={() => setShowQuickFarmerModal(true)}
+                  >
+                    + नवीन शेतकरी (Register New)
+                  </button>
+                </div>
+
+                <div className="sf-farmer-select-row">
                   <input
                     type="text"
                     placeholder="शोधा / Search..."
-                    className="form-input"
-                    style={{ width: 170 }}
+                    className="form-input sf-search-input"
                     value={farmerSearch}
                     onChange={(e) => setFarmerSearch(e.target.value)}
                   />
@@ -543,31 +594,43 @@ export default function TransactionForm() {
                     ))}
                   </select>
                 </div>
+
                 {selectedFarmer && (
-                  <div className="bill-farmer-info">
-                    ✓ <strong>{selectedFarmer.name}</strong>
-                    {selectedFarmer.village && ` — गाव: ${selectedFarmer.village}`}
-                    {selectedFarmer.mobile && ` — मो.: ${selectedFarmer.mobile}`}
+                  <div className="sf-farmer-pills">
+                    <span className="sf-pill">
+                      ✓ {selectedFarmer.name}
+                    </span>
+                    {selectedFarmer.village && (
+                      <span className="sf-pill">
+                        📍 गाव: {selectedFarmer.village}
+                      </span>
+                    )}
+                    {selectedFarmer.mobile && (
+                      <span className="sf-pill">
+                        📞 मो.: {selectedFarmer.mobile}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Register New Farmer */}
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm btn-register-farmer text-primary"
-                onClick={() => setShowQuickFarmerModal(true)}
-              >
-                + नवीन शेतकरी
-              </button>
+              {/* Quick register shortcut button */}
+              <div className="form-group mb-0">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowQuickFarmerModal(true)}
+                  style={{ height: 35, display: 'inline-flex', alignItems: 'center' }}
+                >
+                  + नवीन शेतकरी
+                </button>
+              </div>
             </div>
 
-            {/* Sub-row for Buyer's Name (खरेदीदाराचे नाव), Village, and Total Bags */}
-            <div className="bill-buyer-row">
-              <div className="form-group" style={{ flex: 2 }}>
-                <label className="form-label">
-                  खरेदीदाराचे नाव / Buyer's Name (खरेदीदार)
-                </label>
+            {/* Buyer Row */}
+            <div className="sf-buyer-strip">
+              <div className="form-group mb-0">
+                <label className="form-label">खरेदीदाराचे नाव / Buyer's Name (खरेदीदार)</label>
                 <input
                   type="text"
                   className="form-input"
@@ -577,7 +640,7 @@ export default function TransactionForm() {
                 />
               </div>
 
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group mb-0">
                 <label className="form-label">गाव / Village</label>
                 <input
                   type="text"
@@ -589,46 +652,50 @@ export default function TransactionForm() {
                 />
               </div>
 
-              <div className="form-group" style={{ width: 140 }}>
+              <div className="form-group mb-0">
                 <label className="form-label">एकूण डाग / Bags</label>
                 <div
                   className="form-input font-mono font-bold text-center"
-                  style={{ background: 'var(--surface-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{
+                    background: 'var(--surface-elevated)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
                   {totalBags} डाग
                 </div>
               </div>
             </div>
           </div>
+        </section>
 
-          {/* ═══════════════════════════════════════════════════
-              BILL BODY — Items LEFT | Deductions RIGHT
-             ═══════════════════════════════════════════════════ */}
-          <div className="bill-body">
+        {/* ═══════════════════════════════════════════════════
+            SECTION 2: Vegetables & Weights / भाजीपाला व वजन तपशील
+           ═══════════════════════════════════════════════════ */}
+        <section className="sf-card">
+          <div className="sf-card-header">
+            <div className="sf-card-title-group">
+              <span className="sf-card-icon">🥬</span>
+              <h2>2. Vegetables & Weights <span className="sf-subtitle">/ भाजीपाला व वजन तपशील</span></h2>
+            </div>
+            <div className="sf-card-badge sf-badge-info">
+              ℹ️ सूचना: दर प्रति १० किलो प्रमाणे • Rate per 10 KG: (वजन ÷ १०) × दर
+            </div>
+          </div>
 
-            {/* ─── LEFT: Vegetable Items ─── */}
-            <div className="bill-items-section">
-              <div className="bill-items-header">
-                <h3>मालाचा तपशील / Vegetable Items</h3>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm text-primary"
-                  onClick={addItemRow}
-                >
-                  + माल जोडा
-                </button>
-              </div>
-
-              <table className="bill-items-table">
+          <div className="sf-card-body" style={{ padding: 0 }}>
+            <div className="sf-table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="sf-items-table">
                 <thead>
                   <tr>
                     <th className="col-num">#</th>
-                    <th className="col-veg">मालाचा प्रकार / Vegetable</th>
-                    <th className="col-bags">डाग / Bags</th>
-                    <th className="col-weight">एकुण वजन किलो</th>
-                    <th className="col-rate">दर १० किलोस</th>
-                    <th className="col-amount">एकुण रुपये</th>
-                    <th className="col-action"></th>
+                    <th className="col-veg">भाजीपाला प्रकार / VEGETABLE</th>
+                    <th className="col-bags">डाग / BAGS</th>
+                    <th className="col-weight">एकूण वजन (KG)</th>
+                    <th className="col-rate">दर प्रति १० कि. (₹)</th>
+                    <th className="col-amount">रक्कम / AMOUNT (₹)</th>
+                    <th className="col-action">क्रिया</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -648,7 +715,7 @@ export default function TransactionForm() {
                           }
                           required
                         >
-                          <option value="">-- निवडा --</option>
+                          <option value="">-- निवडा / Select --</option>
                           {vegetables.map((v) => (
                             <option key={v.id} value={v.id}>
                               {v.name_local} {v.name_english ? `(${v.name_english})` : ''}
@@ -659,9 +726,9 @@ export default function TransactionForm() {
                       <td className="col-bags">
                         <input
                           type="number"
-                          className="form-input"
+                          className="form-input text-right"
                           min="1"
-                          placeholder="डाग"
+                          placeholder="0"
                           value={item.bags_count}
                           onChange={(e) =>
                             handleItemChange(
@@ -678,8 +745,8 @@ export default function TransactionForm() {
                           type="number"
                           step="0.01"
                           min="0.01"
-                          className="form-input"
-                          placeholder="किलो"
+                          className="form-input text-right font-mono"
+                          placeholder="0.00"
                           value={item.weight_kg}
                           onChange={(e) =>
                             handleItemChange(
@@ -696,8 +763,8 @@ export default function TransactionForm() {
                           type="number"
                           step="0.01"
                           min="0.01"
-                          className="form-input"
-                          placeholder="₹/१०किलो"
+                          className="form-input text-right font-mono"
+                          placeholder="0.00"
                           value={item.rate_per_10kg}
                           onChange={(e) =>
                             handleItemChange(
@@ -713,281 +780,393 @@ export default function TransactionForm() {
                         {formatCurrency(item.calculated_amount)}
                       </td>
                       <td className="col-action">
-                        {items.length > 1 && (
+                        {items.length > 1 ? (
                           <button
                             type="button"
-                            className="btn-remove-row"
-                            title="काढा / Remove"
+                            className="btn btn-ghost btn-sm text-danger"
+                            title="काढा / Remove Row"
                             onClick={() => removeItemRow(index)}
                           >
                             ✕
                           </button>
+                        ) : (
+                          <span className="text-muted" style={{ fontSize: 11 }}>—</span>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
-              {/* Totals strip */}
-              <div className="bill-items-totals">
-                <div className="bill-totals-label">
-                  एकुण डाग: <span>{totalBags}</span>
-                </div>
-                <div className="bill-totals-label">
-                  एकुण वजन: <span>{totalWeight.toFixed(2)} KG</span>
-                </div>
-                <div className="bill-gross-amount">
-                  <div className="label">एकुण रुपये / Gross</div>
-                  <div className="value">{formatCurrency(grossAmount)}</div>
-                </div>
-              </div>
             </div>
 
-            {/* ─── RIGHT: Deductions ─── */}
-            <div className="bill-deductions-section">
-              <div className="bill-deductions-header">
-                <h3>खर्चाचा तपशील / Deductions</h3>
-                <p>सर्व कपात एकूण रक्कमेतून वजा होतील</p>
-              </div>
+            {/* Table Footer Bar: Add Row + Summary Metrics */}
+            <div className="sf-table-footer-bar">
+              <button
+                type="button"
+                className="btn-add-item"
+                onClick={addItemRow}
+              >
+                <span>+</span> माल जोडा / Add Another Item <kbd style={{ opacity: 0.7, fontSize: 10, marginLeft: 4 }}>F4</kbd>
+              </button>
 
-              <div className="bill-deductions-list">
-                {/* Hamali / हमली */}
-                <div className="bill-deduction-row">
-                  <div className="deduction-label">
-                    हमली <span className="marathi">/ Hamali</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    value={deductions.hamali || ''}
-                    placeholder="₹ 0"
-                    onChange={(e) => handleDeductionChange('hamali', e.target.value)}
-                  />
+              <div className="sf-items-summary-strip">
+                <div className="sf-summary-metric">
+                  <span className="label">एकूण डाग:</span>
+                  <span className="val">{totalBags} Bags</span>
                 </div>
-
-                {/* Bharai / भराई */}
-                <div className="bill-deduction-row">
-                  <div className="deduction-label">
-                    भराई <span className="marathi">/ Bharai</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    value={deductions.bharai || ''}
-                    placeholder="₹ 0"
-                    onChange={(e) => handleDeductionChange('bharai', e.target.value)}
-                  />
+                <div className="sf-summary-metric">
+                  <span className="label">एकूण वजन:</span>
+                  <span className="val">{totalWeight.toFixed(2)} KG</span>
                 </div>
-
-                {/* Tolai / तोलाई */}
-                <div className="bill-deduction-row">
-                  <div className="deduction-label">
-                    तोलाई <span className="marathi">/ Tolai</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    value={deductions.tolai || ''}
-                    placeholder="₹ 0"
-                    onChange={(e) => handleDeductionChange('tolai', e.target.value)}
-                  />
+                <div className="sf-summary-metric gross">
+                  <span className="label">एकूण खरेदी / GROSS:</span>
+                  <span className="val">{formatCurrency(grossAmount)}</span>
                 </div>
-
-                {/* Mapai / मापाई */}
-                <div className="bill-deduction-row">
-                  <div className="deduction-label">
-                    मापाई <span className="marathi">/ Mapai</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    value={deductions.mapai || ''}
-                    placeholder="₹ 0"
-                    onChange={(e) => handleDeductionChange('mapai', e.target.value)}
-                  />
-                </div>
-
-                {/* Lekki / लेक्ही */}
-                <div className="bill-deduction-row">
-                  <div className="deduction-label">
-                    लेक्ही <span className="marathi">/ Lekki</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    value={deductions.lekki || ''}
-                    placeholder="₹ 0"
-                    onChange={(e) => handleDeductionChange('lekki', e.target.value)}
-                  />
-                </div>
-
-                {/* Motor Bhada / मो. भाडे */}
-                <div className="bill-deduction-row">
-                  <div className="deduction-label">
-                    मो. भाडे <span className="marathi">/ Motor Bhada</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    value={deductions.motor_bhada || ''}
-                    placeholder="₹ 0"
-                    onChange={(e) => handleDeductionChange('motor_bhada', e.target.value)}
-                  />
-                </div>
-
-                {/* Other / इतर */}
-                <div className="bill-deduction-row">
-                  <div className="deduction-label">
-                    इतर कपात <span className="marathi">/ Other</span>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    value={deductions.other_deductions || ''}
-                    placeholder="₹ 0"
-                    onChange={(e) => handleDeductionChange('other_deductions', e.target.value)}
-                  />
-                </div>
-
-                {/* Other Note */}
-                {(deductions.other_deductions || 0) > 0 && (
-                  <div className="bill-deduction-note">
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="इतर कपातीचे कारण / Reason..."
-                      value={deductions.other_deductions_note || ''}
-                      onChange={(e) => handleDeductionChange('other_deductions_note', e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Total Deductions */}
-              <div className="bill-deductions-total">
-                <div className="label">एकुण खर्च / Total</div>
-                <div className="value">−{formatCurrency(totalDeductions)}</div>
               </div>
             </div>
           </div>
-
-          {/* ═══════════════════════════════════════════════════
-              SETTLEMENT FOOTER — Gross / Deductions / Net
-             ═══════════════════════════════════════════════════ */}
-          <div className="bill-settlement-footer">
-            <div className="bill-summary-item gross">
-              <div className="label">एकुण रुपये / Gross Amount</div>
-              <div className="value">{formatCurrency(grossAmount)}</div>
-            </div>
-            <div className="bill-summary-item deductions">
-              <div className="label">वजा खर्च / Less Deductions</div>
-              <div className="value">−{formatCurrency(totalDeductions)}</div>
-            </div>
-            <div className="bill-summary-item net-payable">
-              <div className="label">ना. शिल्लक / Net Payable (नक्की रुपये)</div>
-              <div className="value">{formatCurrency(netPayable)}</div>
-            </div>
-          </div>
-
-        </div>
+        </section>
 
         {/* ═══════════════════════════════════════════════════
-            OPTIONAL: Instant Payment
+            LOWER GRID: Section 3 (Deductions) + Section 4 (Summary)
            ═══════════════════════════════════════════════════ */}
-        {!isEdit && (
-          <div className="bill-payment-section">
-            <label className="payment-toggle">
-              <input
-                type="checkbox"
-                checked={recordPaymentNow}
-                onChange={(e) => setRecordPaymentNow(e.target.checked)}
-              />
-              <span className="toggle-text">लगेच रक्कम प्रदान करा / Record Payment Now</span>
-            </label>
+        <div className="sf-bottom-grid">
 
-            {recordPaymentNow && (
-              <div className="payment-fields">
-                <div className="form-group mb-0">
-                  <label className="form-label">रक्कम / Amount (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max={netPayable}
-                    className="form-input"
-                    value={paymentAmount}
-                    onChange={(e) =>
-                      setPaymentAmount(e.target.value ? parseFloat(e.target.value) : '')
-                    }
-                    placeholder={netPayable.toString()}
-                  />
+          {/* ─── SECTION 3: Deductions / खर्च व कपात वजावट ─── */}
+          <section className="sf-card">
+            <div className="sf-card-header">
+              <div className="sf-card-title-group">
+                <span className="sf-card-icon" style={{ color: 'var(--color-danger)' }}>✂️</span>
+                <h2>3. Deductions <span className="sf-subtitle">/ खर्च व कपात वजावट</span></h2>
+              </div>
+              <div className="sf-card-badge" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+                कपात नोंद
+              </div>
+            </div>
+
+            <div className="sf-card-body">
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
+                सर्व कपात एकूण रक्कमेतून वजा होतील (Subtracted from Gross)
+              </p>
+
+              <div className="sf-deductions-grid">
+                {/* Hamali */}
+                <div className="sf-deduction-cell">
+                  <div className="sf-deduction-info">
+                    <span className="sf-deduction-icon">🚛</span>
+                    <div>
+                      <div className="sf-deduction-title">हमाली / Hamali</div>
+                      <div className="sf-deduction-sub">मजुरी खर्च</div>
+                    </div>
+                  </div>
+                  <div className="sf-deduction-input-wrap">
+                    <span className="sf-deduction-currency">₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="sf-deduction-input"
+                      value={deductions.hamali || ''}
+                      placeholder="0"
+                      onChange={(e) => handleDeductionChange('hamali', e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="form-group mb-0">
-                  <label className="form-label">Payment Mode</label>
-                  <select
-                    className="form-select"
-                    value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
-                  >
-                    <option value="cash">Cash (रोख)</option>
-                    <option value="upi">UPI / Online</option>
-                    <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
-                    <option value="cheque">Cheque</option>
-                  </select>
+
+                {/* Bharai */}
+                <div className="sf-deduction-cell">
+                  <div className="sf-deduction-info">
+                    <span className="sf-deduction-icon">📦</span>
+                    <div>
+                      <div className="sf-deduction-title">भराई / Bharai</div>
+                      <div className="sf-deduction-sub">पोते लोडिंग</div>
+                    </div>
+                  </div>
+                  <div className="sf-deduction-input-wrap">
+                    <span className="sf-deduction-currency">₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="sf-deduction-input"
+                      value={deductions.bharai || ''}
+                      placeholder="0"
+                      onChange={(e) => handleDeductionChange('bharai', e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="form-group mb-0">
-                  <label className="form-label">Reference No.</label>
+
+                {/* Tolai */}
+                <div className="sf-deduction-cell">
+                  <div className="sf-deduction-info">
+                    <span className="sf-deduction-icon">⚖️</span>
+                    <div>
+                      <div className="sf-deduction-title">तोलाई / Tolai</div>
+                      <div className="sf-deduction-sub">वजन काटा फी</div>
+                    </div>
+                  </div>
+                  <div className="sf-deduction-input-wrap">
+                    <span className="sf-deduction-currency">₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="sf-deduction-input"
+                      value={deductions.tolai || ''}
+                      placeholder="0"
+                      onChange={(e) => handleDeductionChange('tolai', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Mapai */}
+                <div className="sf-deduction-cell">
+                  <div className="sf-deduction-info">
+                    <span className="sf-deduction-icon">📏</span>
+                    <div>
+                      <div className="sf-deduction-title">मापाई / Mapai</div>
+                      <div className="sf-deduction-sub">मोजणी शुल्क</div>
+                    </div>
+                  </div>
+                  <div className="sf-deduction-input-wrap">
+                    <span className="sf-deduction-currency">₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="sf-deduction-input"
+                      value={deductions.mapai || ''}
+                      placeholder="0"
+                      onChange={(e) => handleDeductionChange('mapai', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Lekki */}
+                <div className="sf-deduction-cell">
+                  <div className="sf-deduction-info">
+                    <span className="sf-deduction-icon">📝</span>
+                    <div>
+                      <div className="sf-deduction-title">लेक्ही / Lekki</div>
+                      <div className="sf-deduction-sub">नोंद वही हिशोब</div>
+                    </div>
+                  </div>
+                  <div className="sf-deduction-input-wrap">
+                    <span className="sf-deduction-currency">₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="sf-deduction-input"
+                      value={deductions.lekki || ''}
+                      placeholder="0"
+                      onChange={(e) => handleDeductionChange('lekki', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Motor Bhada */}
+                <div className="sf-deduction-cell">
+                  <div className="sf-deduction-info">
+                    <span className="sf-deduction-icon">🚚</span>
+                    <div>
+                      <div className="sf-deduction-title">मो. भाडे / Bhada</div>
+                      <div className="sf-deduction-sub">वाहतूक भाडे</div>
+                    </div>
+                  </div>
+                  <div className="sf-deduction-input-wrap">
+                    <span className="sf-deduction-currency">₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="sf-deduction-input"
+                      value={deductions.motor_bhada || ''}
+                      placeholder="0"
+                      onChange={(e) => handleDeductionChange('motor_bhada', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Other Deductions */}
+                <div className="sf-deduction-cell full-width">
+                  <div className="sf-deduction-info">
+                    <span className="sf-deduction-icon">⋯</span>
+                    <div>
+                      <div className="sf-deduction-title">इतर कपात / Other Deductions</div>
+                      <div className="sf-deduction-sub">अडत किंवा अतिरिक्त खर्च</div>
+                    </div>
+                  </div>
+                  <div className="sf-deduction-input-wrap">
+                    <span className="sf-deduction-currency">₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="sf-deduction-input"
+                      value={deductions.other_deductions || ''}
+                      placeholder="0"
+                      onChange={(e) => handleDeductionChange('other_deductions', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Other deduction note if amount entered */}
+              {(deductions.other_deductions || 0) > 0 && (
+                <div style={{ marginTop: 8 }}>
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="UPI Ref / Cheque No."
-                    value={paymentRef}
-                    onChange={(e) => setPaymentRef(e.target.value)}
+                    placeholder="इतर कपातीचे कारण / Reason for other deduction..."
+                    value={deductions.other_deductions_note || ''}
+                    onChange={(e) => handleDeductionChange('other_deductions_note', e.target.value)}
                   />
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
 
-        {/* ═══════════════════════════════════════════════════
-            ACTIONS
-           ═══════════════════════════════════════════════════ */}
-        <div className="bill-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
-            disabled={saving}
-          >
-            रद्द / Cancel
-          </button>
-          <button
-            type="submit"
-            className="btn-save-bill"
-            disabled={saving || grossAmount <= 0}
-          >
-            {saving
-              ? 'Saving...'
-              : isEdit
-                ? `💾 बदल जतन करा / Save Changes`
-                : '💾 पट्टी तयार करा / Save & Generate Bill'}
-          </button>
+              {/* Total Deductions Strip */}
+              <div className="sf-deductions-total-strip">
+                <span className="label">एकूण खर्च कपात / Total Deductions:</span>
+                <span className="val">−{formatCurrency(totalDeductions)}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* ─── SECTION 4: Settlement Summary / अंतिम हिशोब ─── */}
+          <section className="sf-card">
+            <div className="sf-card-header">
+              <div className="sf-card-title-group">
+                <span className="sf-card-icon">💰</span>
+                <h2>4. Settlement Summary <span className="sf-subtitle">/ अंतिम हिशोब</span></h2>
+              </div>
+            </div>
+
+            <div className="sf-card-body">
+              {/* Financial Breakdown */}
+              <div className="sf-summary-breakdown">
+                <div className="sf-breakdown-row">
+                  <span className="label">एकूण रक्कम / Gross Amount <small className="text-muted">(भाजीपाला एकूण खरेदी)</small></span>
+                  <span className="val">{formatCurrency(grossAmount)}</span>
+                </div>
+                <div className="sf-breakdown-row deductions">
+                  <span className="label">वजा कपात / Less Deductions <small className="text-muted">(हमली, भाडे, तोलाई व इतर)</small></span>
+                  <span className="val">−{formatCurrency(totalDeductions)}</span>
+                </div>
+              </div>
+
+              {/* Hero Net Payable Box */}
+              <div className="sf-net-payable-hero">
+                <div className="sf-nph-header">
+                  <span className="sf-nph-title">ना. शिल्लक / NET PAYABLE</span>
+                  <span className="sf-nph-badge">नक्की रुपये</span>
+                </div>
+                <div className="sf-nph-amount">
+                  {formatCurrency(netPayable)}
+                </div>
+                <div className="sf-nph-words">
+                  अक्षरी: {amountToWordsMarathi(netPayable)}
+                </div>
+              </div>
+
+              {/* Instant Payment Option */}
+              {!isEdit && (
+                <div className="sf-payment-box">
+                  <label className="sf-payment-toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={recordPaymentNow}
+                      onChange={(e) => setRecordPaymentNow(e.target.checked)}
+                    />
+                    <span className="sf-payment-toggle-text">
+                      लगेच रक्कम प्रदान करा / Record Immediate Payment
+                    </span>
+                  </label>
+                  <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, marginLeft: 24 }}>
+                    सदर रक्कम शेतकऱ्यास रोख किंवा बँक खात्यावर वितरित करण्यात आली आहे.
+                  </p>
+
+                  {recordPaymentNow && (
+                    <div className="sf-payment-inputs-grid">
+                      <div className="form-group mb-0">
+                        <label className="form-label">रक्कम / Amount (₹)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          max={netPayable}
+                          className="form-input"
+                          value={paymentAmount}
+                          onChange={(e) =>
+                            setPaymentAmount(e.target.value ? parseFloat(e.target.value) : '')
+                          }
+                          placeholder={netPayable.toString()}
+                        />
+                      </div>
+                      <div className="form-group mb-0">
+                        <label className="form-label">पेमेंट प्रकार / Mode</label>
+                        <select
+                          className="form-select"
+                          value={paymentMode}
+                          onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
+                        >
+                          <option value="cash">रोख (Cash)</option>
+                          <option value="upi">UPI / Online</option>
+                          <option value="bank_transfer">Bank Transfer (NEFT)</option>
+                          <option value="cheque">Cheque</option>
+                        </select>
+                      </div>
+                      <div className="form-group mb-0" style={{ gridColumn: '1 / -1' }}>
+                        <label className="form-label">नोंदणी संदर्भ / Ref No</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="रोख वाटप (Counter Cash) / UPI Ref..."
+                          value={paymentRef}
+                          onChange={(e) => setPaymentRef(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions Row */}
+              <div className="sf-actions-row">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
+                  disabled={saving}
+                >
+                  रद्द / Cancel
+                </button>
+                <button
+                  id="btn-save-bill-main"
+                  type="submit"
+                  className="btn-save-bill-hero"
+                  disabled={saving || grossAmount <= 0}
+                >
+                  {saving
+                    ? 'Saving...'
+                    : isEdit
+                    ? '💾 बदल जतन करा / Save Changes'
+                    : '💾 पट्टी तयार करा / Save & Generate Bill'}
+                </button>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        {/* Shortcuts Footer Bar */}
+        <div className="sf-shortcuts-strip">
+          <span>⌨ <strong>Shortcuts:</strong></span>
+          <span><kbd>Ctrl + S</kbd> पट्टी जतन करा</span>
+          <span>•</span>
+          <span><kbd>F4</kbd> नवीन ओळ</span>
+          <span>•</span>
+          <span><kbd>F2</kbd> शेतकरी शोध</span>
         </div>
       </form>
 
@@ -1016,7 +1195,7 @@ export default function TransactionForm() {
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="e.g. Ramesh Patil"
+                    placeholder="e.g. रमेश तुकाराम पाटील"
                     value={quickFarmerData.name}
                     onChange={(e) =>
                       setQuickFarmerData((prev) => ({ ...prev, name: e.target.value }))
@@ -1043,7 +1222,7 @@ export default function TransactionForm() {
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="e.g. Pimpalgaon"
+                      placeholder="e.g. पिंपळगाव"
                       value={quickFarmerData.village || ''}
                       onChange={(e) =>
                         setQuickFarmerData((prev) => ({ ...prev, village: e.target.value }))
