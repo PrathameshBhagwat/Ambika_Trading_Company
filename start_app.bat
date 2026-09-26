@@ -49,26 +49,41 @@ if %errorlevel% neq 0 (
 )
 echo [OK] Python dependencies verified.
 
-:: 4. Check Frontend node_modules
-echo [2/3] Checking Node.js packages...
-if not exist "node_modules\" (
-    echo [INFO] Installing root dependencies...
+:: 4. Check Root Node dependencies (Electron runtime)
+echo [2/3] Checking desktop runtime packages...
+if not exist "node_modules\electron\" (
+    echo [INFO] Installing desktop runtime dependencies...
     call npm install
-)
-if not exist "frontend\node_modules\" (
-    echo [INFO] Installing frontend dependencies...
-    cd frontend && call npm install && cd ..
-)
-echo [OK] Node dependencies verified.
-
-:: 5. Check if production build exists
-echo [3/3] Checking frontend build bundle...
-if not exist "frontend\dist\index.html" (
-    echo [INFO] Building frontend application bundle...
-    call npm run frontend:build
     if %errorlevel% neq 0 (
         color 0C
-        echo [ERROR] Frontend build failed.
+        echo [ERROR] Failed to install desktop runtime packages.
+        pause
+        exit /b 1
+    )
+)
+echo [OK] Desktop runtime packages verified.
+
+:: 5. Check Frontend bundle
+echo [3/3] Checking frontend bundle...
+if not exist "frontend\dist\index.html" (
+    if exist "frontend\package.json" (
+        if not exist "frontend\node_modules\" (
+            echo [INFO] Installing frontend source dependencies...
+            pushd frontend
+            call npm install
+            popd
+        )
+        echo [INFO] Building frontend application bundle...
+        call npm run frontend:build
+        if %errorlevel% neq 0 (
+            color 0C
+            echo [ERROR] Frontend build failed.
+            pause
+            exit /b 1
+        )
+    ) else (
+        color 0C
+        echo [ERROR] Frontend distribution bundle is missing: frontend\dist\index.html
         pause
         exit /b 1
     )
@@ -88,6 +103,9 @@ echo ===========================================================================
 echo [SUCCESS] Starting Ambika Trading Desktop Application...
 echo ===============================================================================
 echo.
+
+:: Ensure production environment for pre-compiled assets
+set NODE_ENV=production
 
 :: Start desktop application
 call npm start

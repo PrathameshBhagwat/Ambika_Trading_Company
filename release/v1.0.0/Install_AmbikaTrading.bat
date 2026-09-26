@@ -54,7 +54,7 @@ echo [OK] Python backend ready.
 echo [2/4] Verifying desktop runtime packages...
 if not exist "node_modules\" (
     echo [INFO] Installing desktop runtime packages...
-    call npm install --omit=dev
+    call npm install
 )
 echo [OK] Runtime packages ready.
 

@@ -36,8 +36,36 @@ async function createWindow() {
 
   // Ready to show event
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+    console.log('[Electron] Window ready-to-show event fired.');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('[Electron] Page loaded successfully.');
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    console.error(`[Electron] Failed to load: ${errorCode} - ${errorDescription}`);
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  });
+
+  // Fallback: Ensure window is shown even if ready-to-show event is missed
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      console.log('[Electron] Fallback: showing window after timeout.');
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  }, 1200);
 
   if (isDev) {
     const devUrl = 'http://localhost:5173';
@@ -48,6 +76,7 @@ async function createWindow() {
     });
   } else {
     const distPath = path.join(__dirname, '..', 'frontend', 'dist', 'index.html');
+    console.log(`[Electron] Loading production file: ${distPath}`);
     mainWindow.loadFile(distPath);
   }
 
@@ -175,15 +204,24 @@ function runAutoBackup() {
 
 // ─── Lifecycle ───
 app.whenReady().then(async () => {
-  console.log('[Electron] Application starting...');
-  await startBackend(isDev);
-  await createWindow();
+  try {
+    console.log('[Electron] Application starting...');
+    await startBackend(isDev);
+    await createWindow();
+  } catch (startupErr) {
+    console.error('[Electron] Error during application startup:', startupErr);
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
+}).catch((err) => {
+  console.error('[Electron] Fatal startup failure:', err);
 });
 
 app.on('window-all-closed', () => {
