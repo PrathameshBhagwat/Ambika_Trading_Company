@@ -1,5 +1,6 @@
 /**
- * Farmer List — View, search, create, edit, and deactivate farmers.
+ * Farmer List — शेतकरी / Farmers Directory
+ * View, search, create, edit, and deactivate farmers.
  */
 
 import { useState, useEffect } from 'react';
@@ -122,11 +123,11 @@ export default function FarmerList() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Farmers</h1>
-          <p className="page-subtitle">{total} registered farmers</p>
+          <h1 className="page-title">शेतकरी / Farmers</h1>
+          <p className="page-subtitle">{total} नोंदणीकृत शेतकरी</p>
         </div>
         <button className="btn btn-primary" onClick={openCreateForm}>
-          + Add Farmer
+          + नवीन शेतकरी
         </button>
       </div>
 
@@ -135,7 +136,7 @@ export default function FarmerList() {
         <input
           type="text"
           className="form-input"
-          placeholder="Search by name, mobile, or village..."
+          placeholder="नाव, मोबाईल किंवा गावाने शोधा / Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: 400 }}
@@ -155,18 +156,18 @@ export default function FarmerList() {
       ) : farmers.length === 0 ? (
         <div className="empty-state">
           <div className="icon">👨‍🌾</div>
-          <h3>No farmers found</h3>
-          <p>{search ? 'Try a different search term.' : 'Add your first farmer to get started.'}</p>
+          <h3>शेतकरी सापडले नाहीत</h3>
+          <p>{search ? 'वेगळा शब्द शोधून पहा / Try a different search.' : 'पहिला शेतकरी नोंदवा / Add your first farmer.'}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Mobile</th>
-                <th>Village</th>
-                <th>Registered</th>
+                <th>नाव / Name</th>
+                <th>मोबाईल / Mobile</th>
+                <th>गाव / Village</th>
+                <th>नोंदणी</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -180,13 +181,13 @@ export default function FarmerList() {
                   <td>
                     <div className="flex gap-2">
                       <Link to={`/farmers/${farmer.id}`} className="btn btn-secondary btn-sm">
-                        Ledger
+                        खातेवही
                       </Link>
                       <button className="btn btn-ghost btn-sm" onClick={() => openEditForm(farmer)}>
-                        Edit
+                        बदला
                       </button>
                       <button className="btn btn-danger btn-sm" onClick={() => handleDeactivate(farmer)}>
-                        Deactivate
+                        निष्क्रिय
                       </button>
                     </div>
                   </td>
@@ -202,7 +203,7 @@ export default function FarmerList() {
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="card-title">{editingFarmer ? 'Edit Farmer' : 'Add New Farmer'}</h2>
+              <h2 className="card-title">{editingFarmer ? 'शेतकरी बदला / Edit Farmer' : 'नवीन शेतकरी / Add Farmer'}</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -210,7 +211,7 @@ export default function FarmerList() {
                 {error && <div className="form-error mb-4">{error}</div>}
 
                 <div className="form-group">
-                  <label className="form-label">Farmer Name *</label>
+                  <label className="form-label">शेतकरी नाव / Name *</label>
                   <input
                     className="form-input"
                     value={formData.name}
@@ -222,7 +223,7 @@ export default function FarmerList() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Mobile Number</label>
+                    <label className="form-label">मोबाईल / Mobile</label>
                     <input
                       className="form-input"
                       value={formData.mobile || ''}
@@ -231,7 +232,7 @@ export default function FarmerList() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Village</label>
+                    <label className="form-label">गाव / Village</label>
                     <input
                       className="form-input"
                       value={formData.village || ''}
@@ -242,7 +243,7 @@ export default function FarmerList() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Address</label>
+                  <label className="form-label">पत्ता / Address</label>
                   <input
                     className="form-input"
                     value={formData.address || ''}

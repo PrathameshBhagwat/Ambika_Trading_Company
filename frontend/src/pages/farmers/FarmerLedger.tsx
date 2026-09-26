@@ -199,7 +199,7 @@ export default function FarmerLedger() {
             <input
               id="dateFrom"
               type="date"
-              className="form-control form-control-sm"
+              className="form-input form-input-sm"
               style={{ width: 'auto' }}
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -210,7 +210,7 @@ export default function FarmerLedger() {
             <input
               id="dateTo"
               type="date"
-              className="form-control form-control-sm"
+              className="form-input form-input-sm"
               style={{ width: 'auto' }}
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
@@ -265,8 +265,8 @@ export default function FarmerLedger() {
         <div
           className="stat-card"
           style={{
-            background: outstandingBalance > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-            borderColor: outstandingBalance > 0 ? 'var(--danger)' : 'var(--primary)',
+            background: outstandingBalance > 0 ? 'var(--color-danger-bg)' : 'var(--color-primary-bg)',
+            borderColor: outstandingBalance > 0 ? 'var(--border-error)' : 'var(--border-focus)',
           }}
         >
           <div className="stat-label">Outstanding Due / येणे बाकी</div>
@@ -306,8 +306,8 @@ export default function FarmerLedger() {
           transactions.length === 0 ? (
             <div className="empty-state">
               <div className="icon">📋</div>
-              <h3>No transactions yet</h3>
-              <p>No vegetable delivery bills recorded for this farmer.</p>
+              <h3>कोणतेही व्यवहार नाहीत / No transactions yet</h3>
+              <p>या शेतकऱ्यासाठी अद्याप कोणतीही पावती नोंदवलेली नाही.</p>
             </div>
           ) : (
             <div className="table-container">
@@ -359,8 +359,8 @@ export default function FarmerLedger() {
         ) : payments.length === 0 ? (
           <div className="empty-state">
             <div className="icon">💰</div>
-            <h3>No payments recorded</h3>
-            <p>No payments have been logged for this farmer yet.</p>
+            <h3>कोणतेही पेमेंट नाही / No payments recorded</h3>
+            <p>या शेतकऱ्यासाठी अद्याप पेमेंट नोंदवलेले नाही.</p>
           </div>
         ) : (
           <div className="table-container">

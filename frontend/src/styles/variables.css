@@ -1,82 +1,197 @@
 /*
- * Ambika Trading - Design System Variables
+ * Ambika Trading — Design System Variables
  *
- * Premium dark theme with emerald green accent,
- * inspired by modern trading/financial dashboards.
+ * Dual-theme design system: Light (Day) + Dark (Night)
+ * Inspired by traditional Indian accounting / agricultural trading.
+ * Brand accent: Green — represents settlement, payment, agriculture.
+ *
+ * Typography: Noto Sans + Noto Sans Devanagari for bilingual support.
  */
 
-:root {
-  /* ─── Color Palette ─── */
-  /* Primary — Emerald Green (trade/agriculture theme) */
-  --color-primary-50: #ecfdf5;
-  --color-primary-100: #d1fae5;
-  --color-primary-200: #a7f3d0;
-  --color-primary-300: #6ee7b7;
-  --color-primary-400: #34d399;
-  --color-primary-500: #10b981;
-  --color-primary-600: #059669;
-  --color-primary-700: #047857;
-  --color-primary-800: #065f46;
-  --color-primary-900: #064e3b;
+/* ─── Light Theme (Default) ─── */
+:root,
+[data-theme="light"] {
+  /* Primary — Deep Agricultural Green */
+  --color-primary: #16845B;
+  --color-primary-dark: #0F6245;
+  --color-primary-light: #1A9D6C;
+  --color-primary-bg: #E8F5EE;
+  --color-primary-bg-subtle: #F0FAF5;
 
-  /* Neutral — Slate for backgrounds and text */
-  --color-neutral-50: #f8fafc;
-  --color-neutral-100: #f1f5f9;
-  --color-neutral-200: #e2e8f0;
-  --color-neutral-300: #cbd5e1;
-  --color-neutral-400: #94a3b8;
-  --color-neutral-500: #64748b;
-  --color-neutral-600: #475569;
-  --color-neutral-700: #334155;
-  --color-neutral-800: #1e293b;
-  --color-neutral-900: #0f172a;
-  --color-neutral-950: #020617;
+  /* Surfaces */
+  --surface-bg: #F5F6F3;
+  --surface-card: #FFFFFF;
+  --surface-card-hover: #FAFBF9;
+  --surface-elevated: #F8F9F7;
+  --surface-sidebar: #FFFFFF;
+  --surface-sidebar-hover: #F0F2ED;
+  --surface-sidebar-active: #E8F5EE;
+  --surface-input: #FFFFFF;
+  --surface-input-hover: #FAFBF9;
+  --surface-modal-overlay: rgba(23, 33, 28, 0.45);
+  --surface-settlement: #FFFFFF;
+  --surface-settlement-header: #F8F9F7;
 
-  /* Accent — Amber for highlights/warnings */
-  --color-accent-400: #fbbf24;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  /* Text */
+  --text-primary: #17211C;
+  --text-secondary: #4A5650;
+  --text-muted: #7A857F;
+  --text-inverse: #FFFFFF;
+  --text-link: #16845B;
+  --text-on-primary: #FFFFFF;
 
-  /* Semantic */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-info: #3b82f6;
+  /* Borders */
+  --border-default: #DCE4DE;
+  --border-light: #E8EDE9;
+  --border-focus: #16845B;
+  --border-error: #D94A4A;
 
-  /* ─── Surfaces (Dark Mode) ─── */
-  --surface-bg: #0c1222;
-  --surface-card: #111a2e;
-  --surface-card-hover: #162040;
-  --surface-elevated: #1a2744;
-  --surface-sidebar: #0a0f1e;
-  --surface-input: #0f1729;
+  /* Semantic colors */
+  --color-success: #16845B;
+  --color-warning: #C48A00;
+  --color-warning-bg: #FFF8E6;
+  --color-danger: #C44040;
+  --color-danger-bg: #FFF0F0;
+  --color-info: #2E6BB0;
+  --color-info-bg: #EDF4FC;
+
+  /* Aliases */
+  --primary: var(--color-primary);
+  --danger: var(--color-danger);
+  --warning: var(--color-warning);
+  --success: var(--color-success);
+  --info: var(--color-info);
+  --bg-secondary: var(--surface-elevated);
+
+  /* Badge colors */
+  --badge-paid-bg: #E8F5EE;
+  --badge-paid-text: #0F6245;
+  --badge-partial-bg: #EDF4FC;
+  --badge-partial-text: #2E6BB0;
+  --badge-unpaid-bg: #FFF5E0;
+  --badge-unpaid-text: #8B6914;
+  --badge-cancelled-bg: #FFF0F0;
+  --badge-cancelled-text: #B53535;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(23, 33, 28, 0.04);
+  --shadow-sm: 0 1px 3px rgba(23, 33, 28, 0.06), 0 1px 2px rgba(23, 33, 28, 0.04);
+  --shadow-md: 0 4px 8px rgba(23, 33, 28, 0.06), 0 2px 4px rgba(23, 33, 28, 0.04);
+  --shadow-lg: 0 8px 24px rgba(23, 33, 28, 0.08), 0 4px 8px rgba(23, 33, 28, 0.04);
+  --shadow-xl: 0 16px 48px rgba(23, 33, 28, 0.12);
+
+  /* Table */
+  --table-header-bg: #F5F6F3;
+  --table-row-hover: #FAFBF9;
+  --table-border: #E8EDE9;
+  --table-stripe: #FAFBF9;
+
+  /* Stat cards */
+  --stat-bg: #FFFFFF;
+  --stat-border: #E8EDE9;
+
+  /* Sidebar brand */
+  --sidebar-brand-bg: #16845B;
+  --sidebar-brand-text: #FFFFFF;
+
+  /* Deduction accent */
+  --deduction-text: #9B6B00;
+  --deduction-bg: #FFF8E6;
+}
+
+/* ─── Dark Theme ─── */
+[data-theme="dark"] {
+  --color-primary: #20B477;
+  --color-primary-dark: #18A66F;
+  --color-primary-light: #6ED9A9;
+  --color-primary-bg: rgba(32, 180, 119, 0.1);
+  --color-primary-bg-subtle: rgba(32, 180, 119, 0.05);
+
+  --surface-bg: #08110D;
+  --surface-card: #101B16;
+  --surface-card-hover: #15251E;
+  --surface-elevated: #15251E;
+  --surface-sidebar: #0A1410;
+  --surface-sidebar-hover: #15251E;
+  --surface-sidebar-active: rgba(32, 180, 119, 0.1);
+  --surface-input: #0D1812;
+  --surface-input-hover: #15251E;
   --surface-modal-overlay: rgba(0, 0, 0, 0.6);
+  --surface-settlement: #101B16;
+  --surface-settlement-header: #15251E;
 
-  /* ─── Borders ─── */
-  --border-default: rgba(148, 163, 184, 0.12);
-  --border-focus: var(--color-primary-500);
-  --border-error: var(--color-danger);
+  --text-primary: #F1F6F3;
+  --text-secondary: #91A49A;
+  --text-muted: #5E7568;
+  --text-inverse: #08110D;
+  --text-link: #6ED9A9;
+  --text-on-primary: #FFFFFF;
 
-  /* ─── Text ─── */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-inverse: #0f172a;
-  --text-link: var(--color-primary-400);
+  --border-default: #263A31;
+  --border-light: #1E2E27;
+  --border-focus: #20B477;
+  --border-error: #E35B5B;
 
-  /* ─── Typography ─── */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --color-success: #20B477;
+  --color-warning: #E0A72D;
+  --color-warning-bg: rgba(224, 167, 45, 0.08);
+  --color-danger: #E35B5B;
+  --color-danger-bg: rgba(227, 91, 91, 0.08);
+  --color-info: #5A9BD5;
+  --color-info-bg: rgba(90, 155, 213, 0.08);
 
-  --text-xs: 0.75rem;     /* 12px */
-  --text-sm: 0.8125rem;   /* 13px */
-  --text-base: 0.875rem;  /* 14px */
-  --text-md: 1rem;        /* 16px */
-  --text-lg: 1.125rem;    /* 18px */
-  --text-xl: 1.25rem;     /* 20px */
-  --text-2xl: 1.5rem;     /* 24px */
-  --text-3xl: 1.875rem;   /* 30px */
-  --text-4xl: 2.25rem;    /* 36px */
+  /* Aliases */
+  --primary: var(--color-primary);
+  --danger: var(--color-danger);
+  --warning: var(--color-warning);
+  --success: var(--color-success);
+  --info: var(--color-info);
+  --bg-secondary: var(--surface-elevated);
+
+  --badge-paid-bg: rgba(32, 180, 119, 0.12);
+  --badge-paid-text: #6ED9A9;
+  --badge-partial-bg: rgba(90, 155, 213, 0.12);
+  --badge-partial-text: #7CB8E8;
+  --badge-unpaid-bg: rgba(224, 167, 45, 0.12);
+  --badge-unpaid-text: #E8C45A;
+  --badge-cancelled-bg: rgba(227, 91, 91, 0.12);
+  --badge-cancelled-text: #F08080;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  --table-header-bg: #15251E;
+  --table-row-hover: #15251E;
+  --table-border: #263A31;
+  --table-stripe: #0D1812;
+
+  --stat-bg: #101B16;
+  --stat-border: #263A31;
+
+  --sidebar-brand-bg: #0F6245;
+  --sidebar-brand-text: #FFFFFF;
+
+  --deduction-text: #E0A72D;
+  --deduction-bg: rgba(224, 167, 45, 0.08);
+}
+
+/* ─── Shared Design Tokens ─── */
+:root {
+  /* Typography */
+  --font-family: 'Noto Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  --text-xs: 0.6875rem;    /* 11px */
+  --text-sm: 0.75rem;      /* 12px */
+  --text-base: 0.8125rem;  /* 13px */
+  --text-md: 0.875rem;     /* 14px */
+  --text-lg: 1rem;         /* 16px */
+  --text-xl: 1.125rem;     /* 18px */
+  --text-2xl: 1.375rem;    /* 22px */
+  --text-3xl: 1.625rem;    /* 26px */
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -87,46 +202,37 @@
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
 
-  /* ─── Spacing ─── */
-  --space-1: 0.25rem;   /* 4px */
-  --space-2: 0.5rem;    /* 8px */
-  --space-3: 0.75rem;   /* 12px */
-  --space-4: 1rem;      /* 16px */
-  --space-5: 1.25rem;   /* 20px */
-  --space-6: 1.5rem;    /* 24px */
-  --space-8: 2rem;      /* 32px */
-  --space-10: 2.5rem;   /* 40px */
-  --space-12: 3rem;     /* 48px */
-  --space-16: 4rem;     /* 64px */
+  /* Spacing */
+  --space-0: 0;
+  --space-1: 0.25rem;    /* 4px */
+  --space-2: 0.5rem;     /* 8px */
+  --space-3: 0.75rem;    /* 12px */
+  --space-4: 1rem;       /* 16px */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px */
+  --space-8: 2rem;       /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
 
-  /* ─── Border Radius ─── */
-  --radius-sm: 0.375rem;   /* 6px */
-  --radius-md: 0.5rem;     /* 8px */
-  --radius-lg: 0.75rem;    /* 12px */
-  --radius-xl: 1rem;       /* 16px */
-  --radius-2xl: 1.5rem;    /* 24px */
+  /* Border Radius — conservative, not overly rounded */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
   --radius-full: 9999px;
 
-  /* ─── Shadows ─── */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.15);
+  /* Transitions — subtle, business-appropriate */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+  --transition-theme: 250ms ease;
 
-  /* ─── Transitions ─── */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: 500ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
-
-  /* ─── Layout ─── */
-  --sidebar-width: 260px;
-  --sidebar-collapsed-width: 72px;
-  --header-height: 56px;
+  /* Layout */
+  --sidebar-width: 220px;
+  --header-height: 48px;
   --content-max-width: 1400px;
 
-  /* ─── Z-Index ─── */
+  /* Z-Index */
   --z-dropdown: 100;
   --z-sticky: 200;
   --z-modal-overlay: 300;

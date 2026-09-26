@@ -122,12 +122,14 @@ export interface DeductionResponse {
 export interface TransactionCreate {
   transaction_date: string; // ISO date string YYYY-MM-DD
   farmer_id: number;
+  buyer_name?: string | null;
   items: TransactionItemCreate[];
   deductions: DeductionCreate;
 }
 
 export interface TransactionUpdate {
   farmer_id?: number;
+  buyer_name?: string | null;
   transaction_date?: string;
   items?: TransactionItemCreate[];
   deductions?: DeductionCreate;
@@ -138,6 +140,7 @@ export interface TransactionResponse {
   bill_number: string;
   transaction_date: string;
   farmer_id: number;
+  buyer_name?: string | null;
   farmer_name: string | null;
   farmer_mobile?: string | null;
   farmer_village?: string | null;
@@ -160,6 +163,7 @@ export interface TransactionListItem {
   bill_number: string;
   transaction_date: string;
   farmer_id: number;
+  buyer_name?: string | null;
   farmer_name: string | null;
   farmer_mobile?: string | null;
   farmer_village?: string | null;

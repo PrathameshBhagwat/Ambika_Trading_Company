@@ -1,11 +1,15 @@
 /**
  * Ambika Trading — Application Shell
  *
- * Main layout with sidebar navigation and routed content area.
- * This is the root component that defines the application structure.
+ * Main layout with:
+ * - Compact green-branded sidebar with bilingual navigation
+ * - Top bar with page context, date, and theme toggle
+ * - Routed content area
+ * - Theme persistence (localStorage)
  */
 
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import FarmerList from './pages/farmers/FarmerList';
 import FarmerLedger from './pages/farmers/FarmerLedger';
@@ -19,14 +23,54 @@ import PaymentSummary from './pages/reports/PaymentSummary';
 import BackupRestore from './pages/settings/BackupRestore';
 import './App.css';
 
+function getPageInfo(pathname: string): { title: string; subtitle: string } {
+  if (pathname === '/') return { title: 'Dashboard', subtitle: 'आजचा आढावा — Today\'s Overview' };
+  if (pathname === '/transactions/new') return { title: 'नवीन हिशोब पट्टी', subtitle: 'New Farmer Settlement' };
+  if (pathname.startsWith('/transactions/edit')) return { title: 'पावती दुरुस्ती', subtitle: 'Edit Settlement Bill' };
+  if (pathname.startsWith('/transactions/')) return { title: 'हिशोब पावती', subtitle: 'Settlement Bill Details' };
+  if (pathname === '/transactions') return { title: 'Transactions', subtitle: 'सर्व व्यवहार — All Settlements' };
+  if (pathname === '/farmers') return { title: 'शेतकरी', subtitle: 'Farmers Directory' };
+  if (pathname.startsWith('/farmers/')) return { title: 'शेतकरी खातेवही', subtitle: 'Farmer Ledger' };
+  if (pathname === '/vegetables') return { title: 'भाजीपाला', subtitle: 'Vegetable Master' };
+  if (pathname === '/reports/daily') return { title: 'दैनिक सारांश', subtitle: 'Daily Summary Report' };
+  if (pathname === '/reports/outstanding') return { title: 'बाकी रक्कम', subtitle: 'Farmer Outstanding' };
+  if (pathname === '/reports/payments') return { title: 'पेमेंट सारांश', subtitle: 'Payment Summary' };
+  if (pathname === '/settings/backup') return { title: 'बॅकअप', subtitle: 'Backup & Audit' };
+  return { title: 'Ambika Trading', subtitle: '' };
+}
+
 function App() {
+  const location = useLocation();
+  const pageInfo = getPageInfo(location.pathname);
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('ambika-theme');
+    return saved === 'dark' ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ambika-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+
+  const todayFormatted = new Date().toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
   return (
     <div className="app-layout">
       {/* ── Sidebar ── */}
       <aside className="app-sidebar no-print">
         <div className="sidebar-brand">
-          <h1>🌿 Ambika Trading</h1>
-          <p>Farmer Settlement System</p>
+          <div className="sidebar-brand-icon">🌿</div>
+          <div>
+            <h1>Ambika Trading</h1>
+            <p>Farmer Settlement System</p>
+          </div>
         </div>
 
         <nav className="sidebar-nav">
@@ -45,18 +89,18 @@ function App() {
           <div className="sidebar-section">
             <div className="sidebar-section-title">Operations</div>
             <NavLink
+              to="/transactions/new"
+              className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
+            >
+              <span className="icon">✍️</span>
+              नवीन हिशोब पट्टी
+            </NavLink>
+            <NavLink
               to="/transactions"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">📋</span>
               Transactions
-            </NavLink>
-            <NavLink
-              to="/transactions/new"
-              className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
-            >
-              <span className="icon">✍️</span>
-              New Settlement
             </NavLink>
           </div>
 
@@ -67,14 +111,14 @@ function App() {
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">👨‍🌾</span>
-              Farmers
+              शेतकरी / Farmers
             </NavLink>
             <NavLink
               to="/vegetables"
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             >
               <span className="icon">🥬</span>
-              Vegetables
+              भाजीपाला / Vegetables
             </NavLink>
           </div>
 
@@ -122,6 +166,22 @@ function App() {
 
       {/* ── Main Content ── */}
       <main className="app-main">
+        {/* Top Bar */}
+        <div className="app-topbar no-print">
+          <div className="topbar-left">
+            <span className="topbar-page-title">{pageInfo.title}</span>
+            {pageInfo.subtitle && (
+              <span className="topbar-page-subtitle">— {pageInfo.subtitle}</span>
+            )}
+          </div>
+          <div className="topbar-right">
+            <span className="topbar-date">{todayFormatted}</span>
+            <button className="theme-toggle" onClick={toggleTheme} title="Switch theme">
+              {theme === 'light' ? '🌙' : '☀️'} {theme === 'light' ? 'Dark' : 'Light'}
+            </button>
+          </div>
+        </div>
+
         <div className="app-content">
           <Routes>
             <Route path="/" element={<Dashboard />} />

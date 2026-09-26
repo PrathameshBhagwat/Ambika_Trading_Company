@@ -1,0 +1,536 @@
+/*
+ * Ambika Trading — Settlement Bill Entry Form
+ *
+ * Styled to match the physical paper bill layout.
+ * Two-column: Vegetable items LEFT, Deductions RIGHT
+ * Works in both Light and Dark themes via CSS variables.
+ */
+
+/* ─── Bill Container ─── */
+.bill-form {
+  max-width: 1060px;
+  margin: 0 auto;
+}
+
+/* ─── Company Header Strip ─── */
+.bill-header {
+  background: var(--surface-settlement-header);
+  border: 1px solid var(--border-default);
+  border-bottom: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background var(--transition-theme), border-color var(--transition-theme);
+}
+
+.bill-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bill-header-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--color-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  color: white;
+  flex-shrink: 0;
+}
+
+.bill-header-text h2 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.bill-header-text p {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.bill-header-right {
+  text-align: right;
+}
+
+.bill-type-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bill-type-value {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+}
+
+/* ─── Bill Info Section (Date + Farmer + Buyer) ─── */
+.bill-info-section {
+  background: var(--surface-settlement);
+  border-left: 1px solid var(--border-default);
+  border-right: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  transition: background var(--transition-theme);
+}
+
+.bill-info-row {
+  padding: var(--space-3) var(--space-5) var(--space-2);
+  display: flex;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.bill-buyer-row {
+  padding: 0 var(--space-5) var(--space-3);
+  display: flex;
+  gap: var(--space-3);
+  align-items: end;
+  border-top: 1px dashed var(--border-light);
+}
+
+.bill-info-row .form-group,
+.bill-buyer-row .form-group {
+  margin-bottom: 0;
+}
+
+.bill-farmer-select {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.bill-farmer-select .form-input {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.bill-farmer-select .form-select {
+  flex: 1;
+}
+
+.bill-farmer-info {
+  margin-top: 3px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.bill-farmer-info strong {
+  color: var(--color-primary);
+}
+
+.btn-register-farmer {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Bill Body — Two Column ─── */
+.bill-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  background: var(--surface-settlement);
+  border-left: 1px solid var(--border-default);
+  border-right: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  min-height: 260px;
+  transition: background var(--transition-theme);
+}
+
+/* ─── LEFT: Items ─── */
+.bill-items-section {
+  border-right: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+}
+
+.bill-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--table-header-bg);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.bill-items-header h3 {
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bill-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.bill-items-table thead th {
+  padding: 6px var(--space-2);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-muted);
+  background: var(--table-header-bg);
+  border-bottom: 1px solid var(--border-default);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.bill-items-table thead th:last-child,
+.bill-items-table thead th.col-amount {
+  text-align: right;
+}
+
+.bill-items-table tbody td {
+  padding: 5px var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+
+.bill-items-table tbody tr:hover td {
+  background: var(--table-row-hover);
+}
+
+.bill-items-table .col-num { width: 28px; color: var(--text-muted); font-size: var(--text-xs); }
+.bill-items-table .col-veg { min-width: 140px; }
+.bill-items-table .col-bags,
+.bill-items-table .col-weight,
+.bill-items-table .col-rate { width: 100px; }
+.bill-items-table .col-amount {
+  width: 110px;
+  text-align: right;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.bill-items-table .col-action { width: 30px; text-align: center; }
+
+/* Compact inputs inside table */
+.bill-items-table .form-select,
+.bill-items-table .form-input {
+  padding: 4px 6px;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+}
+
+/* Totals strip */
+.bill-items-totals {
+  margin-top: auto;
+  padding: var(--space-2) var(--space-3);
+  background: var(--table-header-bg);
+  border-top: 2px solid var(--border-default);
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.bill-totals-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.bill-totals-label span {
+  display: inline-block;
+  margin-left: var(--space-1);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.bill-gross-amount { text-align: right; }
+
+.bill-gross-amount .label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bill-gross-amount .value {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── RIGHT: Deductions ─── */
+.bill-deductions-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.bill-deductions-header {
+  padding: var(--space-2) var(--space-3);
+  background: var(--table-header-bg);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.bill-deductions-header h3 {
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bill-deductions-header p {
+  font-size: 10px;
+  color: var(--color-warning);
+  margin-top: 1px;
+}
+
+.bill-deductions-list {
+  flex: 1;
+  padding: 0;
+}
+
+.bill-deduction-row {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  align-items: center;
+  padding: 5px var(--space-3);
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+  transition: background var(--transition-fast);
+}
+
+.bill-deduction-row:hover {
+  background: var(--deduction-bg);
+}
+
+.deduction-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.deduction-label .marathi {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  margin-left: 2px;
+}
+
+.bill-deduction-row .form-input {
+  padding: 4px 6px;
+  font-size: var(--text-sm);
+  text-align: right;
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-deduction-note {
+  padding: 4px var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.bill-deduction-note .form-input {
+  padding: 3px 6px;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+}
+
+/* Total deductions */
+.bill-deductions-total {
+  margin-top: auto;
+  padding: var(--space-2) var(--space-3);
+  background: var(--table-header-bg);
+  border-top: 2px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bill-deductions-total .label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.bill-deductions-total .value {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--deduction-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Settlement Footer ─── */
+.bill-settlement-footer {
+  background: var(--surface-settlement-header);
+  border: 1px solid var(--border-default);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: var(--space-3) var(--space-5);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr;
+  gap: var(--space-3);
+  align-items: center;
+  transition: background var(--transition-theme);
+}
+
+.bill-summary-item { text-align: center; }
+
+.bill-summary-item .label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+.bill-summary-item .value {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-summary-item.gross .value { color: var(--text-primary); }
+.bill-summary-item.deductions .value { color: var(--deduction-text); }
+
+.bill-summary-item.net-payable {
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.bill-summary-item.net-payable .label {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.bill-summary-item.net-payable .value {
+  font-size: var(--text-xl);
+  color: var(--color-primary);
+}
+
+/* ─── Payment Section ─── */
+.bill-payment-section {
+  max-width: 1060px;
+  margin: var(--space-3) auto 0;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  transition: background var(--transition-theme);
+}
+
+.payment-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.payment-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.payment-toggle .toggle-text {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.payment-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-default);
+}
+
+/* ─── Actions ─── */
+.bill-actions {
+  max-width: 1060px;
+  margin: var(--space-3) auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.btn-save-bill {
+  padding: var(--space-2) var(--space-6);
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-semibold);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-family);
+}
+
+.btn-save-bill:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.btn-save-bill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-save-bill:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Remove row */
+.btn-remove-row {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: 1;
+  transition: all var(--transition-fast);
+}
+
+.btn-remove-row:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 960px) {
+  .bill-body {
+    grid-template-columns: 1fr;
+  }
+
+  .bill-items-section {
+    border-right: none;
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .bill-info-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bill-settlement-footer {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+}

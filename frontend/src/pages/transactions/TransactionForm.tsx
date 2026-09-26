@@ -1,12 +1,27 @@
 /**
  * Ambika Trading — Transaction Entry Form
  *
- * Full settlement entry workflow:
- * - Farmer selection with on-the-fly registration modal
- * - Multi-item vegetable entry with live (weight/10)*rate calculation
- * - Deductions entry (Hamali, Bharai, Tolai, Mapai, Lekki, Motor Bhada, Other)
- * - Net payable calculation & validation
- * - Optional instant payment recording on save
+ * UI designed to match the physical Ambika Trading paper bill layout:
+ *
+ *   ┌──────────────── COMPANY HEADER ────────────────┐
+ *   │  मे. अंबिका ट्रेडिंग कंपनी       Bill / दि.  │
+ *   ├──────────────── FARMER / DATE ─────────────────┤
+ *   │  दिनांक: ____   मालन्याचे नाव: ____  गाव: __  │
+ *   ├────────── ITEMS ──────────┬── DEDUCTIONS ──────┤
+ *   │ मालाचा प्रकार | वजन | दर │  हमली    ₹____     │
+ *   │ | एकुण रुपये              │  भराई    ₹____     │
+ *   │                           │  तोलाई   ₹____     │
+ *   │                           │  मापाई   ₹____     │
+ *   │                           │  लेक्ही   ₹____     │
+ *   │                           │  मो.भाडे  ₹____     │
+ *   │ Totals: Bags / KG / Gross │  एकुण खर्च ₹____   │
+ *   ├───────────────────────────┴────────────────────┤
+ *   │ एकुण रुपये | वजा खर्च | ना. शिल्लक (Net)      │
+ *   └────────────────────────────────────────────────┘
+ *
+ * IMPORTANT: Business logic is NOT changed.
+ * All calculations use the same formulas.
+ * Backend remains the source of truth for final amounts.
  */
 
 import { useState, useEffect } from 'react';
@@ -24,6 +39,7 @@ import type {
   DeductionCreate,
   PaymentMode,
 } from '../../types';
+import './TransactionForm.css';
 
 interface LineItemState {
   id: string; // client temporary key
@@ -50,6 +66,7 @@ export default function TransactionForm() {
   const [transactionDate, setTransactionDate] = useState(todayISO());
   const [selectedFarmerId, setSelectedFarmerId] = useState<number | ''>('');
   const [farmerSearch, setFarmerSearch] = useState('');
+  const [buyerName, setBuyerName] = useState('');
 
   // Line items
   const [items, setItems] = useState<LineItemState[]>([
@@ -103,14 +120,16 @@ export default function TransactionForm() {
   async function loadMasters() {
     try {
       setLoadingMasters(true);
+      setError(null);
       const [farmersRes, vegRes] = await Promise.all([
-        farmerService.list({ limit: 500 }),
+        farmerService.list({ limit: 200 }),
         vegetableService.list({ is_active: true, limit: 100 }),
       ]);
       setFarmers(farmersRes.items);
       setVegetables(vegRes.items);
-    } catch {
-      setError('Failed to load farmer or vegetable lists.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.message || 'Failed to load farmer or vegetable lists.';
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setLoadingMasters(false);
     }
@@ -135,6 +154,7 @@ export default function TransactionForm() {
       setBillNumber(txn.bill_number);
       setTransactionDate(txn.transaction_date);
       setSelectedFarmerId(txn.farmer_id);
+      if (txn.buyer_name) setBuyerName(txn.buyer_name);
       if (txn.items && txn.items.length > 0) {
         setItems(
           txn.items.map((it) => ({
@@ -263,37 +283,37 @@ export default function TransactionForm() {
 
     // Validation
     if (!selectedFarmerId) {
-      setError('Please select a farmer.');
+      setError('कृपया शेतकरी निवडा / Please select a farmer.');
       return;
     }
 
     if (items.length === 0) {
-      setError('At least one vegetable item is required.');
+      setError('किमान एक भाजीपाला आवश्यक / At least one vegetable item is required.');
       return;
     }
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (!it.vegetable_id) {
-        setError(`Row ${i + 1}: Please select a vegetable.`);
+        setError(`Row ${i + 1}: कृपया भाजीपाला निवडा / Please select a vegetable.`);
         return;
       }
       if (!it.bags_count || Number(it.bags_count) <= 0) {
-        setError(`Row ${i + 1}: Bags count must be greater than 0.`);
+        setError(`Row ${i + 1}: डाग संख्या ० पेक्षा जास्त असणे आवश्यक / Bags count must be greater than 0.`);
         return;
       }
       if (!it.weight_kg || Number(it.weight_kg) <= 0) {
-        setError(`Row ${i + 1}: Weight must be greater than 0.`);
+        setError(`Row ${i + 1}: वजन ० पेक्षा जास्त असणे आवश्यक / Weight must be greater than 0.`);
         return;
       }
       if (!it.rate_per_10kg || Number(it.rate_per_10kg) <= 0) {
-        setError(`Row ${i + 1}: Rate per 10 KG must be greater than 0.`);
+        setError(`Row ${i + 1}: दर १० किलो ० पेक्षा जास्त असणे आवश्यक / Rate per 10 KG must be greater than 0.`);
         return;
       }
     }
 
     if (totalDeductions > grossAmount) {
-      setError(`Total deductions (${formatCurrency(totalDeductions)}) cannot exceed gross amount (${formatCurrency(grossAmount)}).`);
+      setError(`एकूण कपात (${formatCurrency(totalDeductions)}) एकूण रक्कमेपेक्षा जास्त असू शकत नाही (${formatCurrency(grossAmount)}).`);
       return;
     }
 
@@ -315,6 +335,7 @@ export default function TransactionForm() {
       const payload: TransactionCreate = {
         transaction_date: transactionDate,
         farmer_id: Number(selectedFarmerId),
+        buyer_name: buyerName.trim() || null,
         items: items.map((it) => ({
           vegetable_id: Number(it.vegetable_id),
           bags_count: Math.round(Number(it.bags_count)),
@@ -414,17 +435,28 @@ export default function TransactionForm() {
     }
   }
 
+  // ─── RENDER ───
+
+  if (loadingMasters || loadingTxn) {
+    return (
+      <div className="loading-overlay">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
   return (
     <div>
+      {/* Page Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">
-            {isEdit ? `Edit Settlement Bill — ${billNumber}` : 'New Farmer Settlement'}
+            {isEdit ? `पावती दुरुस्ती — ${billNumber}` : 'नवीन हिशोब पट्टी / New Settlement'}
           </h1>
           <p className="page-subtitle">
             {isEdit
-              ? `पावती दुरुस्ती — Bill Number ${billNumber} will be preserved; amounts will be recalculated server-side`
-              : 'नवीन शेतकरी हिशोब पट्टी — Record vegetable delivery & deductions'}
+              ? `Edit Settlement Bill — Bill Number ${billNumber} will be preserved`
+              : 'शेतकरी भाजीपाला वितरण व कपात नोंदवा — Record vegetable delivery & deductions'}
           </p>
         </div>
         <button
@@ -432,29 +464,47 @@ export default function TransactionForm() {
           className="btn btn-secondary"
           onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
         >
-          ← {isEdit ? 'Cancel & Return to Bill' : 'Back to Transactions'}
+          ← {isEdit ? 'Cancel' : 'Back'}
         </button>
       </div>
 
       {error && (
-        <div className="toast toast-error mb-4" style={{ position: 'static' }}>
+        <div className="toast toast-error mb-4" style={{ position: 'static', maxWidth: 1100, margin: '0 auto var(--space-4)' }}>
           {error}
         </div>
       )}
 
-      {loadingMasters || loadingTxn ? (
-        <div className="loading-overlay">
-          <div className="spinner" />
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit}>
-          {/* ── 1. Farmer & Transaction Info ── */}
-          <div className="card mb-4">
-            <h2 className="card-title mb-3">1. Farmer & Bill Information / शेतकरी तपशील</h2>
-            <div className="grid grid-3 gap-4">
-              <div className="form-group">
+      <form onSubmit={handleSubmit}>
+        <div className="bill-form">
+
+          {/* ═══════════════════════════════════════════════════
+              BILL HEADER — Company Name Strip
+             ═══════════════════════════════════════════════════ */}
+          <div className="bill-header">
+            <div className="bill-header-left">
+              <div className="bill-header-icon">🏪</div>
+              <div className="bill-header-text">
+                <h2>मे. अंबिका ट्रेडिंग कंपनी</h2>
+                <p>सर्व प्रकारचे भाजीपाला व तरकारी मालाचे आडतदार</p>
+              </div>
+            </div>
+            <div className="bill-header-right">
+              <div className="bill-type-label">
+                {isEdit ? 'EDIT BILL / पावती दुरुस्ती' : 'SETTLEMENT BILL / हिशोब पट्टी'}
+              </div>
+              {isEdit && <div className="bill-type-value">#{billNumber}</div>}
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════
+              BILL INFO ROW — Date + Farmer + Buyer Selection
+             ═══════════════════════════════════════════════════ */}
+          <div className="bill-info-section">
+            <div className="bill-info-row">
+              {/* Date */}
+              <div className="form-group" style={{ minWidth: 160 }}>
                 <label className="form-label">
-                  Transaction Date / दिनांक <span className="text-danger">*</span>
+                  दिनांक / Date <span className="text-danger">*</span>
                 </label>
                 <input
                   type="date"
@@ -465,35 +515,27 @@ export default function TransactionForm() {
                 />
               </div>
 
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <div className="flex items-center justify-between">
-                  <label className="form-label">
-                    Select Farmer / शेतकरी निवडा <span className="text-danger">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm text-primary"
-                    onClick={() => setShowQuickFarmerModal(true)}
-                  >
-                    + Register New Farmer
-                  </button>
-                </div>
-                <div className="flex gap-2">
+              {/* Farmer */}
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">
+                  मालधण्याचे नाव / Farmer Name <span className="text-danger">*</span>
+                </label>
+                <div className="bill-farmer-select">
                   <input
                     type="text"
-                    placeholder="Search farmer name or village..."
+                    placeholder="शोधा / Search..."
                     className="form-input"
-                    style={{ width: '40%' }}
+                    style={{ width: 170 }}
                     value={farmerSearch}
                     onChange={(e) => setFarmerSearch(e.target.value)}
                   />
                   <select
-                    className="form-select flex-1"
+                    className="form-select"
                     value={selectedFarmerId}
                     onChange={(e) => setSelectedFarmerId(e.target.value ? Number(e.target.value) : '')}
                     required
                   >
-                    <option value="">-- Choose Farmer ({filteredFarmers.length} found) --</option>
+                    <option value="">-- शेतकरी निवडा ({filteredFarmers.length}) --</option>
                     {filteredFarmers.map((f) => (
                       <option key={f.id} value={f.id}>
                         {f.name} {f.village ? `(${f.village})` : ''} {f.mobile ? `· ${f.mobile}` : ''}
@@ -502,46 +544,98 @@ export default function TransactionForm() {
                   </select>
                 </div>
                 {selectedFarmer && (
-                  <div className="text-muted text-sm mt-1">
-                    Selected: <strong>{selectedFarmer.name}</strong>
-                    {selectedFarmer.village && ` | Village: ${selectedFarmer.village}`}
-                    {selectedFarmer.mobile && ` | Mobile: ${selectedFarmer.mobile}`}
+                  <div className="bill-farmer-info">
+                    ✓ <strong>{selectedFarmer.name}</strong>
+                    {selectedFarmer.village && ` — गाव: ${selectedFarmer.village}`}
+                    {selectedFarmer.mobile && ` — मो.: ${selectedFarmer.mobile}`}
                   </div>
                 )}
+              </div>
+
+              {/* Register New Farmer */}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm btn-register-farmer text-primary"
+                onClick={() => setShowQuickFarmerModal(true)}
+              >
+                + नवीन शेतकरी
+              </button>
+            </div>
+
+            {/* Sub-row for Buyer's Name (खरेदीदाराचे नाव), Village, and Total Bags */}
+            <div className="bill-buyer-row">
+              <div className="form-group" style={{ flex: 2 }}>
+                <label className="form-label">
+                  खरेदीदाराचे नाव / Buyer's Name (खरेदीदार)
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="खरेदीदाराचे नाव प्रविष्ट करा (Buyer Name)..."
+                  value={buyerName}
+                  onChange={(e) => setBuyerName(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">गाव / Village</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={selectedFarmer?.village || ''}
+                  readOnly
+                  placeholder="—"
+                  style={{ background: 'var(--surface-elevated)' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ width: 140 }}>
+                <label className="form-label">एकूण डाग / Bags</label>
+                <div
+                  className="form-input font-mono font-bold text-center"
+                  style={{ background: 'var(--surface-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  {totalBags} डाग
+                </div>
               </div>
             </div>
           </div>
 
-          {/* ── 2. Vegetables & Weights ── */}
-          <div className="card mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="card-title">2. Vegetables & Weights / भाजीपाला व वजन</h2>
-                <p className="card-subtitle">Rate is strictly per 10 KG. System calculates (weight ÷ 10) × rate</p>
-              </div>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={addItemRow}>
-                + Add Another Item
-              </button>
-            </div>
+          {/* ═══════════════════════════════════════════════════
+              BILL BODY — Items LEFT | Deductions RIGHT
+             ═══════════════════════════════════════════════════ */}
+          <div className="bill-body">
 
-            <div className="table-container mb-3">
-              <table className="table">
+            {/* ─── LEFT: Vegetable Items ─── */}
+            <div className="bill-items-section">
+              <div className="bill-items-header">
+                <h3>मालाचा तपशील / Vegetable Items</h3>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm text-primary"
+                  onClick={addItemRow}
+                >
+                  + माल जोडा
+                </button>
+              </div>
+
+              <table className="bill-items-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 40 }}>#</th>
-                    <th>Vegetable / भाजी</th>
-                    <th style={{ width: 120 }}>Bags / डाग</th>
-                    <th style={{ width: 150 }}>Weight (KG) / वजन</th>
-                    <th style={{ width: 160 }}>Rate / 10 KG / दर</th>
-                    <th style={{ width: 160 }} className="amount">Amount / रक्कम</th>
-                    <th style={{ width: 50 }}></th>
+                    <th className="col-num">#</th>
+                    <th className="col-veg">मालाचा प्रकार / Vegetable</th>
+                    <th className="col-bags">डाग / Bags</th>
+                    <th className="col-weight">एकुण वजन किलो</th>
+                    <th className="col-rate">दर १० किलोस</th>
+                    <th className="col-amount">एकुण रुपये</th>
+                    <th className="col-action"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item, index) => (
                     <tr key={item.id}>
-                      <td className="text-muted">{index + 1}</td>
-                      <td>
+                      <td className="col-num">{index + 1}</td>
+                      <td className="col-veg">
                         <select
                           className="form-select"
                           value={item.vegetable_id}
@@ -554,7 +648,7 @@ export default function TransactionForm() {
                           }
                           required
                         >
-                          <option value="">-- Select Vegetable --</option>
+                          <option value="">-- निवडा --</option>
                           {vegetables.map((v) => (
                             <option key={v.id} value={v.id}>
                               {v.name_local} {v.name_english ? `(${v.name_english})` : ''}
@@ -562,12 +656,12 @@ export default function TransactionForm() {
                           ))}
                         </select>
                       </td>
-                      <td>
+                      <td className="col-bags">
                         <input
                           type="number"
                           className="form-input"
                           min="1"
-                          placeholder="e.g. 5"
+                          placeholder="डाग"
                           value={item.bags_count}
                           onChange={(e) =>
                             handleItemChange(
@@ -579,13 +673,13 @@ export default function TransactionForm() {
                           required
                         />
                       </td>
-                      <td>
+                      <td className="col-weight">
                         <input
                           type="number"
                           step="0.01"
                           min="0.01"
                           className="form-input"
-                          placeholder="KG (e.g. 245.5)"
+                          placeholder="किलो"
                           value={item.weight_kg}
                           onChange={(e) =>
                             handleItemChange(
@@ -597,13 +691,13 @@ export default function TransactionForm() {
                           required
                         />
                       </td>
-                      <td>
+                      <td className="col-rate">
                         <input
                           type="number"
                           step="0.01"
                           min="0.01"
                           className="form-input"
-                          placeholder="₹ / 10 KG"
+                          placeholder="₹/१०किलो"
                           value={item.rate_per_10kg}
                           onChange={(e) =>
                             handleItemChange(
@@ -615,15 +709,15 @@ export default function TransactionForm() {
                           required
                         />
                       </td>
-                      <td className="amount currency" style={{ fontWeight: 600, fontSize: '1rem' }}>
+                      <td className="col-amount">
                         {formatCurrency(item.calculated_amount)}
                       </td>
-                      <td className="text-center">
+                      <td className="col-action">
                         {items.length > 1 && (
                           <button
                             type="button"
-                            className="btn btn-ghost btn-sm text-danger"
-                            title="Remove Row"
+                            className="btn-remove-row"
+                            title="काढा / Remove"
                             onClick={() => removeItemRow(index)}
                           >
                             ✕
@@ -633,249 +727,278 @@ export default function TransactionForm() {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr style={{ background: 'var(--bg-secondary)', fontWeight: 600 }}>
-                    <td colSpan={2}>Totals:</td>
-                    <td>{totalBags} Bags</td>
-                    <td>{totalWeight.toFixed(2)} KG</td>
-                    <td className="text-muted text-sm">Gross Amount:</td>
-                    <td className="amount currency text-primary" style={{ fontSize: '1.1rem' }}>
-                      {formatCurrency(grossAmount)}
-                    </td>
-                    <td></td>
-                  </tr>
-                </tfoot>
               </table>
-            </div>
-          </div>
 
-          {/* ── 3. Deductions (Always Subtracted) ── */}
-          <div className="card mb-4">
-            <div className="mb-3">
-              <h2 className="card-title">3. Deductions / कपात वजावट</h2>
-              <p className="card-subtitle text-warning">
-                All deduction amounts are deducted from Gross Amount. They are NEVER added.
-              </p>
-            </div>
-
-            <div className="grid grid-4 gap-3">
-              <div className="form-group">
-                <label className="form-label">Hamali / हमाली (₹)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="form-input"
-                  value={deductions.hamali || ''}
-                  placeholder="0.00"
-                  onChange={(e) => handleDeductionChange('hamali', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Bharai / भराई (₹)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="form-input"
-                  value={deductions.bharai || ''}
-                  placeholder="0.00"
-                  onChange={(e) => handleDeductionChange('bharai', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Tolai / तोलाई (₹)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="form-input"
-                  value={deductions.tolai || ''}
-                  placeholder="0.00"
-                  onChange={(e) => handleDeductionChange('tolai', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Mapai / मापाई (₹)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="form-input"
-                  value={deductions.mapai || ''}
-                  placeholder="0.00"
-                  onChange={(e) => handleDeductionChange('mapai', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Lekki / लेक्की (₹)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="form-input"
-                  value={deductions.lekki || ''}
-                  placeholder="0.00"
-                  onChange={(e) => handleDeductionChange('lekki', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Motor Bhada / मोटार भाडे (₹)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="form-input"
-                  value={deductions.motor_bhada || ''}
-                  placeholder="0.00"
-                  onChange={(e) => handleDeductionChange('motor_bhada', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Other Deductions / इतर कपात (₹)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="form-input"
-                  value={deductions.other_deductions || ''}
-                  placeholder="0.00"
-                  onChange={(e) => handleDeductionChange('other_deductions', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Other Deductions Note</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Reason for other deduction..."
-                  value={deductions.other_deductions_note || ''}
-                  onChange={(e) => handleDeductionChange('other_deductions_note', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center mt-3 pt-3" style={{ borderTop: '1px solid var(--border-default)' }}>
-              <span className="text-muted">Total Deductions / एकूण कपात:</span>
-              <span className="text-warning" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                −{formatCurrency(totalDeductions)}
-              </span>
-            </div>
-          </div>
-
-          {/* ── 4. Financial Summary & Instant Settlement ── */}
-          <div className="card mb-4" style={{ borderColor: 'var(--primary)' }}>
-            <h2 className="card-title mb-3">4. Settlement Summary / अंतिम हिशोब</h2>
-
-            <div className="grid grid-3 gap-4 mb-4">
-              <div className="stat-card">
-                <div className="stat-label">Gross Amount / एकूण रक्कम</div>
-                <div className="stat-value">{formatCurrency(grossAmount)}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Total Deductions / वजा कपात</div>
-                <div className="stat-value text-warning">−{formatCurrency(totalDeductions)}</div>
-              </div>
-              <div className="stat-card" style={{ background: 'rgba(16, 185, 129, 0.1)', borderColor: 'var(--primary)' }}>
-                <div className="stat-label" style={{ color: 'var(--primary)' }}>Net Payable / अंतिम देय रक्कम</div>
-                <div className="stat-value text-success" style={{ fontSize: '1.8rem' }}>
-                  {formatCurrency(netPayable)}
+              {/* Totals strip */}
+              <div className="bill-items-totals">
+                <div className="bill-totals-label">
+                  एकुण डाग: <span>{totalBags}</span>
+                </div>
+                <div className="bill-totals-label">
+                  एकुण वजन: <span>{totalWeight.toFixed(2)} KG</span>
+                </div>
+                <div className="bill-gross-amount">
+                  <div className="label">एकुण रुपये / Gross</div>
+                  <div className="value">{formatCurrency(grossAmount)}</div>
                 </div>
               </div>
             </div>
 
-            {/* Optional instant payment checkbox (Only when creating new transaction) */}
-            {!isEdit && (
-              <div className="p-3 mb-3" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                <label className="flex items-center gap-2 cursor-pointer" style={{ userSelect: 'none' }}>
-                  <input
-                    type="checkbox"
-                    checked={recordPaymentNow}
-                    onChange={(e) => setRecordPaymentNow(e.target.checked)}
-                  />
-                  <span style={{ fontWeight: 600 }}>Record Payment to Farmer Now / लगेच रक्कम प्रदान करा</span>
-                </label>
+            {/* ─── RIGHT: Deductions ─── */}
+            <div className="bill-deductions-section">
+              <div className="bill-deductions-header">
+                <h3>खर्चाचा तपशील / Deductions</h3>
+                <p>सर्व कपात एकूण रक्कमेतून वजा होतील</p>
+              </div>
 
-                {recordPaymentNow && (
-                  <div className="grid grid-3 gap-3 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-default)' }}>
-                    <div className="form-group mb-0">
-                      <label className="form-label">Payment Amount (₹)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        max={netPayable}
-                        className="form-input"
-                        value={paymentAmount}
-                        onChange={(e) =>
-                          setPaymentAmount(e.target.value ? parseFloat(e.target.value) : '')
-                        }
-                        placeholder={netPayable.toString()}
-                      />
-                    </div>
-                    <div className="form-group mb-0">
-                      <label className="form-label">Payment Mode</label>
-                      <select
-                        className="form-select"
-                        value={paymentMode}
-                        onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
-                      >
-                        <option value="cash">Cash (रोख)</option>
-                        <option value="upi">UPI / Online</option>
-                        <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
-                        <option value="cheque">Cheque</option>
-                      </select>
-                    </div>
-                    <div className="form-group mb-0">
-                      <label className="form-label">Reference No. (Optional)</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="e.g. UPI Ref / Cheque No."
-                        value={paymentRef}
-                        onChange={(e) => setPaymentRef(e.target.value)}
-                      />
-                    </div>
+              <div className="bill-deductions-list">
+                {/* Hamali / हमली */}
+                <div className="bill-deduction-row">
+                  <div className="deduction-label">
+                    हमली <span className="marathi">/ Hamali</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="form-input"
+                    value={deductions.hamali || ''}
+                    placeholder="₹ 0"
+                    onChange={(e) => handleDeductionChange('hamali', e.target.value)}
+                  />
+                </div>
+
+                {/* Bharai / भराई */}
+                <div className="bill-deduction-row">
+                  <div className="deduction-label">
+                    भराई <span className="marathi">/ Bharai</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="form-input"
+                    value={deductions.bharai || ''}
+                    placeholder="₹ 0"
+                    onChange={(e) => handleDeductionChange('bharai', e.target.value)}
+                  />
+                </div>
+
+                {/* Tolai / तोलाई */}
+                <div className="bill-deduction-row">
+                  <div className="deduction-label">
+                    तोलाई <span className="marathi">/ Tolai</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="form-input"
+                    value={deductions.tolai || ''}
+                    placeholder="₹ 0"
+                    onChange={(e) => handleDeductionChange('tolai', e.target.value)}
+                  />
+                </div>
+
+                {/* Mapai / मापाई */}
+                <div className="bill-deduction-row">
+                  <div className="deduction-label">
+                    मापाई <span className="marathi">/ Mapai</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="form-input"
+                    value={deductions.mapai || ''}
+                    placeholder="₹ 0"
+                    onChange={(e) => handleDeductionChange('mapai', e.target.value)}
+                  />
+                </div>
+
+                {/* Lekki / लेक्ही */}
+                <div className="bill-deduction-row">
+                  <div className="deduction-label">
+                    लेक्ही <span className="marathi">/ Lekki</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="form-input"
+                    value={deductions.lekki || ''}
+                    placeholder="₹ 0"
+                    onChange={(e) => handleDeductionChange('lekki', e.target.value)}
+                  />
+                </div>
+
+                {/* Motor Bhada / मो. भाडे */}
+                <div className="bill-deduction-row">
+                  <div className="deduction-label">
+                    मो. भाडे <span className="marathi">/ Motor Bhada</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="form-input"
+                    value={deductions.motor_bhada || ''}
+                    placeholder="₹ 0"
+                    onChange={(e) => handleDeductionChange('motor_bhada', e.target.value)}
+                  />
+                </div>
+
+                {/* Other / इतर */}
+                <div className="bill-deduction-row">
+                  <div className="deduction-label">
+                    इतर कपात <span className="marathi">/ Other</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="form-input"
+                    value={deductions.other_deductions || ''}
+                    placeholder="₹ 0"
+                    onChange={(e) => handleDeductionChange('other_deductions', e.target.value)}
+                  />
+                </div>
+
+                {/* Other Note */}
+                {(deductions.other_deductions || 0) > 0 && (
+                  <div className="bill-deduction-note">
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="इतर कपातीचे कारण / Reason..."
+                      value={deductions.other_deductions_note || ''}
+                      onChange={(e) => handleDeductionChange('other_deductions_note', e.target.value)}
+                    />
                   </div>
                 )}
               </div>
-            )}
 
-            {/* Form actions */}
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary btn-lg"
-                disabled={saving || grossAmount <= 0}
-              >
-                {saving ? 'Saving...' : isEdit ? `💾 Save Changes to ${billNumber}` : '💾 Save & Generate Settlement Bill'}
-              </button>
+              {/* Total Deductions */}
+              <div className="bill-deductions-total">
+                <div className="label">एकुण खर्च / Total</div>
+                <div className="value">−{formatCurrency(totalDeductions)}</div>
+              </div>
             </div>
           </div>
-        </form>
-      )}
 
-      {/* ── Quick Farmer Registration Modal ── */}
+          {/* ═══════════════════════════════════════════════════
+              SETTLEMENT FOOTER — Gross / Deductions / Net
+             ═══════════════════════════════════════════════════ */}
+          <div className="bill-settlement-footer">
+            <div className="bill-summary-item gross">
+              <div className="label">एकुण रुपये / Gross Amount</div>
+              <div className="value">{formatCurrency(grossAmount)}</div>
+            </div>
+            <div className="bill-summary-item deductions">
+              <div className="label">वजा खर्च / Less Deductions</div>
+              <div className="value">−{formatCurrency(totalDeductions)}</div>
+            </div>
+            <div className="bill-summary-item net-payable">
+              <div className="label">ना. शिल्लक / Net Payable (नक्की रुपये)</div>
+              <div className="value">{formatCurrency(netPayable)}</div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ═══════════════════════════════════════════════════
+            OPTIONAL: Instant Payment
+           ═══════════════════════════════════════════════════ */}
+        {!isEdit && (
+          <div className="bill-payment-section">
+            <label className="payment-toggle">
+              <input
+                type="checkbox"
+                checked={recordPaymentNow}
+                onChange={(e) => setRecordPaymentNow(e.target.checked)}
+              />
+              <span className="toggle-text">लगेच रक्कम प्रदान करा / Record Payment Now</span>
+            </label>
+
+            {recordPaymentNow && (
+              <div className="payment-fields">
+                <div className="form-group mb-0">
+                  <label className="form-label">रक्कम / Amount (₹)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={netPayable}
+                    className="form-input"
+                    value={paymentAmount}
+                    onChange={(e) =>
+                      setPaymentAmount(e.target.value ? parseFloat(e.target.value) : '')
+                    }
+                    placeholder={netPayable.toString()}
+                  />
+                </div>
+                <div className="form-group mb-0">
+                  <label className="form-label">Payment Mode</label>
+                  <select
+                    className="form-select"
+                    value={paymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
+                  >
+                    <option value="cash">Cash (रोख)</option>
+                    <option value="upi">UPI / Online</option>
+                    <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+                </div>
+                <div className="form-group mb-0">
+                  <label className="form-label">Reference No.</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="UPI Ref / Cheque No."
+                    value={paymentRef}
+                    onChange={(e) => setPaymentRef(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════
+            ACTIONS
+           ═══════════════════════════════════════════════════ */}
+        <div className="bill-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate(isEdit ? `/transactions/${id}` : '/transactions')}
+            disabled={saving}
+          >
+            रद्द / Cancel
+          </button>
+          <button
+            type="submit"
+            className="btn-save-bill"
+            disabled={saving || grossAmount <= 0}
+          >
+            {saving
+              ? 'Saving...'
+              : isEdit
+                ? `💾 बदल जतन करा / Save Changes`
+                : '💾 पट्टी तयार करा / Save & Generate Bill'}
+          </button>
+        </div>
+      </form>
+
+      {/* ═══════════════════════════════════════════════════
+          QUICK FARMER REGISTRATION MODAL
+         ═══════════════════════════════════════════════════ */}
       {showQuickFarmerModal && (
         <div className="modal-backdrop">
           <div className="modal">
             <div className="modal-header">
-              <h3 className="modal-title">Register New Farmer</h3>
+              <h3 className="modal-title">नवीन शेतकरी नोंदणी / Register Farmer</h3>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
@@ -888,7 +1011,7 @@ export default function TransactionForm() {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="form-label">
-                    Full Name / नाव <span className="text-danger">*</span>
+                    पूर्ण नाव / Full Name <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
@@ -904,7 +1027,7 @@ export default function TransactionForm() {
                 </div>
                 <div className="grid grid-2 gap-3">
                   <div className="form-group">
-                    <label className="form-label">Mobile Number / मोबाईल</label>
+                    <label className="form-label">मोबाईल / Mobile</label>
                     <input
                       type="tel"
                       className="form-input"
@@ -916,7 +1039,7 @@ export default function TransactionForm() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Village / गाव</label>
+                    <label className="form-label">गाव / Village</label>
                     <input
                       type="text"
                       className="form-input"
@@ -935,10 +1058,10 @@ export default function TransactionForm() {
                   className="btn btn-secondary"
                   onClick={() => setShowQuickFarmerModal(false)}
                 >
-                  Cancel
+                  रद्द / Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={creatingFarmer}>
-                  {creatingFarmer ? 'Registering...' : 'Register Farmer'}
+                  {creatingFarmer ? 'नोंदणी...' : '✓ शेतकरी नोंदवा / Register'}
                 </button>
               </div>
             </form>

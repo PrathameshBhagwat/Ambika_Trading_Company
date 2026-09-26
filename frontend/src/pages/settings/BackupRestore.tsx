@@ -105,7 +105,7 @@ export default function BackupRestore() {
       {/* ── Page Header ── */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Backup & System Audit</h1>
+          <h1 className="page-title">बॅकअप व ऑडिट / Backup & Audit</h1>
           <p className="page-subtitle">
             डेटाबेस बॅकअप व सुरक्षा नोंद — Offline data protection and activity audit trail
           </p>
@@ -116,7 +116,7 @@ export default function BackupRestore() {
           onClick={handleCreateBackup}
           disabled={creatingBackup}
         >
-          {creatingBackup ? 'Creating Backup...' : '💾 Create Database Backup Now'}
+          {creatingBackup ? 'बॅकअप तयार होत आहे...' : '💾 बॅकअप तयार करा / Create Backup'}
         </button>
       </div>
 

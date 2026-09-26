@@ -66,8 +66,7 @@ export default function FarmerOutstandingReport() {
       <div
         className="card mb-4"
         style={{
-          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(15, 23, 42, 0.4) 100%)',
-          borderColor: 'var(--danger)',
+          borderColor: 'var(--color-danger)',
         }}
       >
         <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: '1rem' }}>
@@ -75,12 +74,12 @@ export default function FarmerOutstandingReport() {
             <div className="text-sm text-danger" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Total Outstanding Across All Farmers / एकूण येणे-देणे बाकी
             </div>
-            <div className="text-danger" style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '0.25rem' }}>
+            <div className="text-danger" style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem', fontVariantNumeric: 'tabular-nums' }}>
               {formatCurrency(grandTotal)}
             </div>
           </div>
           <div className="text-right text-muted text-sm">
-            <div><strong>{items.length}</strong> farmers with unsettled balances</div>
+            <div><strong>{items.length}</strong> शेतकरी बाकी / farmers with unsettled balances</div>
           </div>
         </div>
       </div>

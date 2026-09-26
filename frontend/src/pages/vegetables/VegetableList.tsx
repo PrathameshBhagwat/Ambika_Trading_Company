@@ -92,11 +92,11 @@ export default function VegetableList() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Vegetables</h1>
-          <p className="page-subtitle">{total} vegetables in master list</p>
+          <h1 className="page-title">भाजीपाला / Vegetables</h1>
+          <p className="page-subtitle">{total} भाज्या नोंदणीकृत</p>
         </div>
         <button className="btn btn-primary" onClick={openCreateForm}>
-          + Add Vegetable
+          + नवीन भाजी
         </button>
       </div>
 
@@ -105,7 +105,7 @@ export default function VegetableList() {
         <input
           type="text"
           className="form-input"
-          placeholder="Search vegetables..."
+          placeholder="भाजी शोधा / Search vegetables..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: 400 }}
@@ -125,8 +125,8 @@ export default function VegetableList() {
       ) : vegetables.length === 0 ? (
         <div className="empty-state">
           <div className="icon">🥬</div>
-          <h3>No vegetables found</h3>
-          <p>{search ? 'Try a different search term.' : 'Add your first vegetable to get started.'}</p>
+          <h3>भाजी सापडली नाहीत</h3>
+          <p>{search ? 'वेगळा शब्द शोधून पहा / Try a different search.' : 'पहिली भाजी नोंदवा / Add your first vegetable.'}</p>
         </div>
       ) : (
         <div className="table-container">

@@ -1,6 +1,8 @@
 /**
- * Transaction List — View all transactions with status filters.
- * Entry point for creating new transactions (Phase 3).
+ * Transaction List — सर्व व्यवहार / All Settlements
+ *
+ * Compact table with date/status filters.
+ * Bilingual labels matching Ambika Trading terminology.
  */
 
 import { useState, useEffect } from 'react';
@@ -36,7 +38,7 @@ export default function TransactionList() {
       setTransactions(data.items);
       setTotal(data.total);
     } catch {
-      setError('Failed to load transactions');
+      setError('व्यवहार लोड करता आले नाहीत / Failed to load transactions');
     } finally {
       setLoading(false);
     }
@@ -53,54 +55,54 @@ export default function TransactionList() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Transactions</h1>
-          <p className="page-subtitle">{total} total transactions</p>
+          <p className="page-subtitle">एकूण {total} व्यवहार</p>
         </div>
         <button className="btn btn-primary" onClick={() => navigate('/transactions/new')}>
-          + New Transaction
+          + नवीन हिशोब पट्टी
         </button>
       </div>
 
       {/* Filters */}
       <div className="card mb-4">
         <div className="flex items-center gap-4" style={{ flexWrap: 'wrap' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group mb-0">
             <label className="form-label">From Date</label>
             <input
               type="date"
               className="form-input"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              style={{ width: 180 }}
+              style={{ width: 160 }}
             />
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group mb-0">
             <label className="form-label">To Date</label>
             <input
               type="date"
               className="form-input"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              style={{ width: 180 }}
+              style={{ width: 160 }}
             />
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Status</label>
+          <div className="form-group mb-0">
+            <label className="form-label">स्थिती / Status</label>
             <select
               className="form-select"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ width: 180 }}
+              style={{ width: 160 }}
             >
               <option value="">All</option>
               <option value="saved">Unpaid</option>
-              <option value="partially_paid">Partially Paid</option>
-              <option value="fully_paid">Fully Paid</option>
+              <option value="partially_paid">Partial</option>
+              <option value="fully_paid">Paid</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 18 }}>
             <button className="btn btn-ghost btn-sm" onClick={resetFilters}>
-              Reset Filters
+              Reset
             </button>
           </div>
         </div>
@@ -119,11 +121,11 @@ export default function TransactionList() {
       ) : transactions.length === 0 ? (
         <div className="empty-state">
           <div className="icon">📋</div>
-          <h3>No transactions found</h3>
+          <h3>कोणतेही व्यवहार सापडले नाहीत</h3>
           <p>
             {dateFrom || dateTo || statusFilter
-              ? 'Try adjusting your filters.'
-              : 'Create your first farmer settlement transaction to get started.'}
+              ? 'फिल्टर बदलून पहा / Try adjusting your filters.'
+              : 'पहिली हिशोब पावती तयार करा / Create your first settlement.'}
           </p>
         </div>
       ) : (
@@ -131,15 +133,15 @@ export default function TransactionList() {
           <table className="table">
             <thead>
               <tr>
-                <th>Bill No.</th>
-                <th>Date</th>
-                <th>Farmer</th>
-                <th className="amount">Gross</th>
-                <th className="amount">Deductions</th>
-                <th className="amount">Net Payable</th>
-                <th className="amount">Paid</th>
-                <th className="amount">Balance</th>
-                <th>Status</th>
+                <th>बिल नं.</th>
+                <th>दिनांक</th>
+                <th>शेतकरी</th>
+                <th className="amount">एकूण</th>
+                <th className="amount">कपात</th>
+                <th className="amount">देय रक्कम</th>
+                <th className="amount">दिलेली</th>
+                <th className="amount">बाकी</th>
+                <th>स्थिती</th>
               </tr>
             </thead>
             <tbody>
@@ -158,12 +160,14 @@ export default function TransactionList() {
                     <td className="amount currency text-warning">
                       {txn.total_deductions > 0 ? `−${formatCurrency(txn.total_deductions)}` : '—'}
                     </td>
-                    <td className="amount currency" style={{ fontWeight: 600 }}>
+                    <td className="amount currency font-semibold">
                       {formatCurrency(txn.net_payable)}
                     </td>
                     <td className="amount currency text-success">{formatCurrency(txn.total_paid)}</td>
-                    <td className="amount currency text-danger">
-                      {txn.balance_due > 0 ? formatCurrency(txn.balance_due) : '—'}
+                    <td className="amount currency">
+                      {txn.balance_due > 0 ? (
+                        <span className="text-danger">{formatCurrency(txn.balance_due)}</span>
+                      ) : '—'}
                     </td>
                     <td>
                       <span className={`badge ${status.className}`}>{status.label}</span>

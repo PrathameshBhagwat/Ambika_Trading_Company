@@ -44,8 +44,8 @@ export default function DailySummaryReport() {
       {/* ── Page Header ── */}
       <div className="page-header no-print">
         <div>
-          <h1 className="page-title">Daily Summary Report</h1>
-          <p className="page-subtitle">दैनिक खरेदी व हिशोब अहवाल — Trading turnover and deductions breakdown</p>
+          <h1 className="page-title">दैनिक सारांश / Daily Summary</h1>
+          <p className="page-subtitle">दैनिक खरेदी व हिशोब अहवाल — Trading turnover and deductions</p>
         </div>
 
         <button className="btn btn-primary" onClick={() => window.print()}>
